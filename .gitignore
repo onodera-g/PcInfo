@@ -15,10 +15,20 @@ src/build/
 src/*.egg-info/
 src/*.spec
 
-# ログファイル
-src/logs/
-src/CrystalDiskInfo/
+# 仮想環境
+venv/
+ENV/
+env/
 
+# ログファイル
+src/CrystalDiskInfo/CdiResource/
+src/CrystalDiskInfo/License
+src/CrystalDiskInfo/Smart
+src/CrystalDiskInfo/DiskInfo.ini
+src/CrystalDiskInfo/DiskInfo32.exe
+src/CrystalDiskInfo/DiskInfo64.exe
+src/CrystalDiskInfo/DiskInfoA64.exe
+src/CrystalDiskInfo/ReadMe.txt
 
 # IDE関連
 .vscode/
