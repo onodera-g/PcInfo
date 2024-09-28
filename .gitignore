@@ -1,0 +1,28 @@
+# Python関連
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# 仮想環境
+venv/
+ENV/
+env/
+
+# ビルド・配布関連
+src/dist/
+src/build/
+src/*.egg-info/
+
+# ログファイル
+src/logs/
+src/CrystalDiskInfo/
+
+
+# IDE関連
+.vscode/
+.idea/
+
+# OS関連
+.DS_Store
+Thumbs.db
