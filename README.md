@@ -7,7 +7,7 @@
 「PC構成の取得」ボタンをクリックして、OS、CPU、メモリモジュール、ストレージデバイスなどのシステム情報を取得し表示します。
 また、取得した情報をテキスト形式で出力します。
 
-![1](https://github.com/user-attachments/assets/b31cd594-b03a-4eed-b09c-1fdfd73c7d19)
+![スクリーンショット 2024-09-28 184725](https://github.com/user-attachments/assets/dcc79b53-ae20-491b-9964-33b4ad2b9a06)
 
 ### 2. メモリ診断
 「メモリ診断結果の表示」ボタンをクリックして、システムのメモリ診断ログを取得します。
