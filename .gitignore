@@ -13,6 +13,7 @@ env/
 src/dist/
 src/build/
 src/*.egg-info/
+src/*.spec
 
 # ログファイル
 src/logs/

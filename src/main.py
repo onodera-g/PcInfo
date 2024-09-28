@@ -806,7 +806,7 @@ def main(page: ft.Page) -> None:
         page (ft.Page): Fletのページオブジェクト。
     """
     # ページの設定
-    page.title = "システム診断ツール"
+    page.title = "PcInfo"
     page.padding = 20
     page.window.width = 800     # 横幅を800に設定
     page.window.height = 1100    # 高さを1100に設定
