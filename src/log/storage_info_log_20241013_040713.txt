@@ -1,0 +1,18 @@
+ディスク 1:
+  Model: SUNEAST SE900NVG3Q 1024G
+  Disk Size: 1024.2 GB
+  Interface: NVM Express
+  Power On Hours: 392
+  Power On Count: 347
+  Host Writes: 1263
+  Health Status: 正常 (100 %)
+
+ディスク 2:
+  Model: INTEL SSDPEKNU512GZ
+  Disk Size: 512.1 GB
+  Interface: NVM Express
+  Power On Hours: 6751
+  Power On Count: 1311
+  Host Writes: 22567
+  Health Status: 正常 (93 %)
+
