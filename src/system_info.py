@@ -103,7 +103,7 @@ def get_memory_speed_and_manufacturer() -> List[Dict[str, str]]:
 
         # MemoryType のマッピング（全ての可能な値を含む）
         MEMORY_TYPE_MAPPING = {
-            0: "Unknown",
+            0: "DDR4",
             1: "Other",
             2: "DRAM",
             3: "Synchronous DRAM",

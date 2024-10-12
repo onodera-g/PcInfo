@@ -105,6 +105,10 @@ def display_storage_log_content(
         icon_path = os.path.join(base_path, "icons", "disk.png")
 
         for idx, disk in enumerate(disk_data, start=1):
+            # モデル番号を取得（キー名が 'Model' であることを確認）
+            # 'Model Number' など適切なキー名に変更
+            model_number = disk.get('Model', 'Unknown')
+
             storage_card = ft.Container(
                 width=700,  # 横幅を統一
                 content=ft.Card(
@@ -117,8 +121,9 @@ def display_storage_log_content(
                                         width=24,
                                         height=24,
                                     ),
-                                    ft.Text(f"ディスク {idx}",
-                                            size=16, weight="bold")  # module_titleを太字に設定
+                                    # タイトルを「ディスク1: モデル番号」に変更
+                                    ft.Text(f"ディスク{idx}: {
+                                            model_number}", size=16, weight="bold")
                                 ],
                                     vertical_alignment=ft.CrossAxisAlignment.CENTER),
                                 create_label_value_row("Disk Size:", disk.get(
@@ -699,9 +704,9 @@ def display_system_info(page: ft.Page, system_info_container: ft.Column) -> None
                 info_text += f"  モデル番号: {module.get(
                     'ManufacturerAndModel', 'Unknown')}\n"
                 info_text += f"  クロック速度: {
-                    module.get('Speed', 'Unknown')} MHz\n"
+                    module.get('Speed', 'Unknown')} \n"
                 info_text += f"  容量: {module.get('Capacity',
-                                                 'Unknown')} GB\n\n"
+                                                 'Unknown')} \n\n"
         else:
             info_text += "メモリ情報の形式が不正です。\n\n"
 
@@ -715,7 +720,7 @@ def display_system_info(page: ft.Page, system_info_container: ft.Column) -> None
                 info_text += f"GPU{idx}:\n"
                 info_text += f"  モデル番号: {gpu.get('ModelNumber', 'Unknown')}\n"
                 info_text += f"  メモリ容量: {gpu.get('AdapterRAMGB',
-                                                 'Unknown')} GB\n"
+                                                 'Unknown')} \n"
                 info_text += f"  ドライバーバージョン: {
                     gpu.get('DriverVersion', 'Unknown')}\n\n"
         else:
@@ -728,7 +733,7 @@ def display_system_info(page: ft.Page, system_info_container: ft.Column) -> None
                 info_text += f"  モデル番号: {
                     storage.get('ModelNumber', 'Unknown')}\n"
                 info_text += f"  サイズ: {storage.get('SizeGB',
-                                                   'Unknown')} GB\n\n"
+                                                   'Unknown')} \n\n"
         else:
             info_text += "ストレージ情報の形式が不正です。\n\n"
 
