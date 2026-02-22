@@ -12,6 +12,8 @@ import re
 import logging
 from typing import List, Dict, Optional
 
+from utils import get_base_path, get_executable_dir
+
 # ロガーの設定
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)  # 必要に応じてレベルを調整
@@ -36,22 +38,6 @@ DISK_SECTION_PATTERN = re.compile(
 DISK_INFO_PATTERN = re.compile(
     r"ディスク\s+\d+:\n(?:  .+\n)+", re.MULTILINE
 )
-
-
-def get_base_path() -> str:
-    """
-    実行ファイルのディレクトリを取得します。
-    PyInstallerやflet packでコンパイルされた場合でも対応します。
-
-    Returns:
-        str: 実行ファイルのディレクトリパス。
-    """
-    if getattr(sys, 'frozen', False):
-        # PyInstallerやflet packでコンパイルされた場合
-        return os.path.dirname(sys.executable)
-    else:
-        # 開発環境の場合
-        return os.path.dirname(os.path.abspath(__file__))
 
 
 def run_CrystalDiskInfo(executable_path: str, parameters: str) -> bool:
@@ -205,11 +191,11 @@ def get_CrystalDiskInfo_log() -> bool:
     Returns:
         bool: 処理が成功した場合はTrue、失敗した場合はFalse。
     """
-    base_path = get_base_path()
+    exe_dir = get_executable_dir()
 
-    # DiskInfo32.exe のパスを取得
+    # DiskInfo32.exe のパスを取得 (実行ファイルと同じディレクトリ)
     executable_path = os.path.join(
-        base_path, "CrystalDiskInfo", "DiskInfo32.exe")
+        exe_dir, "CrystalDiskInfo", "DiskInfo32.exe")
 
     if not os.path.exists(executable_path):
         logger.error(f"DiskInfo32.exe が見つかりません: {executable_path}")
@@ -217,13 +203,13 @@ def get_CrystalDiskInfo_log() -> bool:
 
     # デフォルトのログファイルパス
     log_file_default = os.path.join(
-        base_path, "CrystalDiskInfo", "DiskInfo.txt")
+        exe_dir, "CrystalDiskInfo", "DiskInfo.txt")
 
     # タイムスタンプの生成
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-    # log フォルダのパスを設定
-    log_folder = os.path.join(base_path, "log")
+    # log フォルダのパスを設定 (実行ファイルと同じディレクトリ)
+    log_folder = os.path.join(exe_dir, "log")
     os.makedirs(log_folder, exist_ok=True)  # log フォルダが存在しない場合は作成
 
     # log フォルダ内のログファイルパスに変更
@@ -307,8 +293,8 @@ def search_storage_log() -> List[str]:
     Returns:
         List[str]: ログファイル名のリスト。ファイルが存在しない場合は空リスト。
     """
-    base_path = get_base_path()
-    log_folder = os.path.join(base_path, "log")
+    exe_dir = get_executable_dir()
+    log_folder = os.path.join(exe_dir, "log")
     pattern = os.path.join(log_folder, "storage_info_log_*.txt")
     log_files = glob.glob(pattern)
 
