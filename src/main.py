@@ -7,9 +7,29 @@ import storage_diagnostics
 import system_info
 from datetime import datetime
 import sys
-from typing import Optional, Union, Dict, List
+from typing import Optional, Union, Dict, List, Sequence
 
 import logging
+
+# 定数定義
+WINDOW_WIDTH = 800
+WINDOW_HEIGHT = 1100
+CARD_WIDTH = 700
+LIST_VIEW_HEIGHT = 150
+LABEL_WIDTH = 120
+ICON_SIZE = 24
+ANIMATION_DURATION = 500
+PROGRESS_BAR_WIDTH = 200
+
+# アイコンファイル名
+ICON_CIRCULAR_PROGRESS = "circular_progress.png"
+ICON_DISK = "disk.png"
+ICON_MEMORY = "memory.png"
+ICON_COMPUTER = "computer.png"
+ICON_CHIP = "chip.png"
+ICON_DEVICE_HUB = "device_hub.png"
+ICON_VIDEO_LIBRARY = "video_library.png"
+ICON_APP = "app_icon.ico"
 
 # ロガーの設定
 logger = logging.getLogger(__name__)
@@ -27,22 +47,177 @@ def get_base_path() -> str:
     """
     実行ファイルのディレクトリを取得します。
     PyInstallerでコンパイルされた場合でも対応します。
+    
+    ワンファイル形式の場合: sys._MEIPASS (リソースファイル用)
 
     Returns:
         str: 実行ファイルのディレクトリパス。
     """
     if getattr(sys, 'frozen', False):
         # PyInstallerでコンパイルされた場合
-        base_path = os.path.dirname(sys.executable)
+        if hasattr(sys, '_MEIPASS'):
+            # ワンファイル形式: リソースファイルは _MEIPASS に展開される
+            base_path = sys._MEIPASS
+        else:
+            # ワンフォルダ形式
+            base_path = os.path.dirname(sys.executable)
     else:
         # 開発環境の場合
         base_path = os.path.dirname(os.path.abspath(__file__))
-    logger.debug(f"Base path: {base_path}")
+    logger.debug(f"Base path (for resources): {base_path}")
     return base_path
 
 
+def get_executable_dir() -> str:
+    """
+    実行ファイルがあるディレクトリを取得します。
+    ログファイルなどの永続的なデータの保存先に使用します。
+
+    Returns:
+        str: 実行ファイルのディレクトリパス。
+    """
+    if getattr(sys, 'frozen', False):
+        # PyInstallerでコンパイルされた場合: 実行ファイルのディレクトリ
+        exe_dir = os.path.dirname(sys.executable)
+    else:
+        # 開発環境の場合
+        exe_dir = os.path.dirname(os.path.abspath(__file__))
+    logger.debug(f"Executable directory (for logs): {exe_dir}")
+    return exe_dir
+
+
 ######################
-#   ストレージ診断
+#   共通ヘルパー関数
+######################
+
+def create_loading_dialog(page: ft.Page) -> ft.AlertDialog:
+    """
+    ローディングダイアログを作成する共通関数。
+
+    Parameters:
+        page (ft.Page): Fletのページオブジェクト。
+
+    Returns:
+        ft.AlertDialog: ローディングダイアログ。
+    """
+    base_path = get_base_path()
+    loading_icon_path = os.path.join(
+        base_path, "icons", ICON_CIRCULAR_PROGRESS)
+
+    loading_dialog = ft.AlertDialog(
+        title=ft.Row([
+            ft.Image(
+                src=loading_icon_path,
+                width=ICON_SIZE,
+                height=ICON_SIZE,
+            ),
+            ft.Text("情報を取得中...", size=12)
+        ],
+            vertical_alignment=ft.CrossAxisAlignment.CENTER),
+        content=ft.ProgressBar(width=PROGRESS_BAR_WIDTH),
+        actions=[],
+        actions_alignment=ft.MainAxisAlignment.START,
+        modal=True,
+    )
+    return loading_dialog
+
+
+def show_loading_dialog(page: ft.Page) -> ft.AlertDialog:
+    """
+    ローディングダイアログを表示する。
+
+    Parameters:
+        page (ft.Page): Fletのページオブジェクト。
+
+    Returns:
+        ft.AlertDialog: 表示されたローディングダイアログ。
+    """
+    loading_dialog = create_loading_dialog(page)
+    page.overlay.append(loading_dialog)
+    loading_dialog.open = True
+    page.update()
+    return loading_dialog
+
+
+def hide_loading_dialog(page: ft.Page, loading_dialog: ft.AlertDialog) -> None:
+    """
+    ローディングダイアログを非表示にする。
+
+    Parameters:
+        page (ft.Page): Fletのページオブジェクト。
+        loading_dialog (ft.AlertDialog): 非表示にするローディングダイアログ。
+    """
+    if loading_dialog in page.overlay:
+        page.overlay.remove(loading_dialog)
+    page.update()
+
+
+def show_success_dialog(page: ft.Page, message: str) -> None:
+    """
+    成功ダイアログを表示する。
+
+    Parameters:
+        page (ft.Page): Fletのページオブジェクト。
+        message (str): 表示するメッセージ。
+    """
+    success_dialog = ft.AlertDialog(
+        content=ft.Text(message, size=12),
+        actions=[
+            ft.TextButton(
+                "OK", on_click=lambda e: close_dialog(success_dialog, page)
+            )
+        ],
+        on_dismiss=lambda e: close_dialog(success_dialog, page),
+    )
+    page.overlay.append(success_dialog)
+    success_dialog.open = True
+    page.update()
+
+
+def show_error_dialog(page: ft.Page, title: str, message: str, error_detail: Optional[str] = None) -> None:
+    """
+    エラーダイアログを表示する。
+
+    Parameters:
+        page (ft.Page): Fletのページオブジェクト。
+        title (str): ダイアログのタイトル。
+        message (str): エラーメッセージ。
+        error_detail (Optional[str]): エラーの詳細（オプション）。
+    """
+    content_controls = [ft.Text(message, size=12)]
+    if error_detail:
+        content_controls.append(
+            ft.Text(error_detail, color=ft.Colors.RED, size=12))
+
+    error_dialog = ft.AlertDialog(
+        title=ft.Text(title, size=12),
+        content=ft.Column(content_controls) if error_detail else ft.Text(
+            message, size=12),
+        actions=[
+            ft.TextButton(
+                "OK", on_click=lambda e: close_dialog(error_dialog, page))
+        ],
+        on_dismiss=lambda e: close_dialog(error_dialog, page),
+    )
+    page.overlay.append(error_dialog)
+    error_dialog.open = True
+    page.update()
+
+
+def close_dialog(dialog: ft.AlertDialog, page: ft.Page) -> None:
+    """
+    ダイアログを閉じる。
+
+    Parameters:
+        dialog (ft.AlertDialog): 閉じるダイアログオブジェクト。
+        page (ft.Page): Fletのページオブジェクト。
+    """
+    dialog.open = False
+    page.update()
+
+
+####################
+#    ストレージ診断
 ######################
 
 def display_storage_diagnostics(
@@ -74,7 +249,7 @@ def display_storage_diagnostics(
                         page.update()
                     ),
                     selected=(selected_storage_log.current == result),
-                    selected_color=ft.colors.BLUE,
+                    selected_color=ft.Colors.BLUE,
                 )
             )  # クリックで詳細を表示する
     page.update()
@@ -122,8 +297,8 @@ def display_storage_log_content(
                                         height=24,
                                     ),
                                     # タイトルを「ディスク1: モデル番号」に変更
-                                    ft.Text(f"ディスク{idx}: {
-                                            model_number}", size=12, weight="bold")
+                                    ft.Text(
+                                        f"ディスク{idx}: {model_number}", size=12, weight=ft.FontWeight.BOLD)
                                 ],
                                     vertical_alignment=ft.CrossAxisAlignment.CENTER),
                                 create_label_value_row("Disk Size:", disk.get(
@@ -146,8 +321,7 @@ def display_storage_log_content(
                     elevation=3,
                     margin=ft.margin.symmetric(vertical=5),
                 ),
-                animate={"duration": 500,
-                         "curve": ft.AnimationCurve.EASE_IN_OUT},
+                animate=ANIMATION_DURATION,
             )
             storage_table_container.controls.append(storage_card)
     page.update()
@@ -161,63 +335,24 @@ def display_storage_diagnostics_with_dialog(page: ft.Page) -> None:
         page (ft.Page): Fletのページオブジェクト。
     """
     # ローディングインジケーターを表示
-    base_path = get_base_path()
-    loading_icon_path = os.path.join(
-        base_path, "icons", "circular_progress.png")
-
-    loading_dialog = ft.AlertDialog(
-        title=ft.Row([
-            ft.Image(
-                src=loading_icon_path,
-                width=24,
-                height=24,
-            ),
-            ft.Text("情報を取得中...", size=12)
-        ],
-            vertical_alignment=ft.CrossAxisAlignment.CENTER),
-        content=ft.ProgressBar(width=200),
-        actions=[],
-        actions_alignment=ft.MainAxisAlignment.START,
-        modal=False,
-    )
-    page.overlay.append(loading_dialog)
-    loading_dialog.open = True
-    page.update()
+    loading_dialog = show_loading_dialog(page)
 
     try:
         result = storage_diagnostics.get_CrystalDiskInfo_log()  # ストレージ診断を実行
         if result:
             # 成功時のダイアログ
-            success_dialog = ft.AlertDialog(
-                content=ft.Text("ストレージ診断が実行され、ログが保存されました。", size=12),
-                actions=[
-                    ft.TextButton(
-                        "OK", on_click=lambda e: close_dialog(success_dialog, page)
-                    )
-                ],
-                on_dismiss=lambda e: close_dialog(success_dialog, page),
-            )
-            page.overlay.append(success_dialog)
-            success_dialog.open = True
+            show_success_dialog(page, "ストレージ診断が実行され、ログが保存されました。")
         else:
             # 失敗時のダイアログ
-            error_dialog = ft.AlertDialog(
-                title=ft.Text("エラー", size=12),
-                content=ft.Text("ストレージ診断の実行に失敗しました。", size=12),
-                actions=[
-                    ft.TextButton(
-                        "OK", on_click=lambda e: close_dialog(error_dialog, page))
-                ],
-                on_dismiss=lambda e: close_dialog(error_dialog, page),
-            )
-            page.overlay.append(error_dialog)
-            error_dialog.open = True
+            show_error_dialog(page, "エラー", "ストレージ診断の実行に失敗しました。")
 
+    except Exception as e:
+        # エラーダイアログを表示
+        logger.exception("ストレージ診断の実行中にエラーが発生しました。")
+        show_error_dialog(page, "エラー", "ストレージ診断の実行中にエラーが発生しました。", str(e))
     finally:
         # ローディングインジケーターを閉じる
-        if loading_dialog in page.overlay:
-            page.overlay.remove(loading_dialog)
-        page.update()
+        hide_loading_dialog(page, loading_dialog)
 
 ####################
 #    メモリ診断
@@ -237,45 +372,16 @@ def display_memory_diagnostics(
         selected_memory_log (ft.Ref[str]): 選択されたログファイル名を保持する参照。
     """
     # ローディングインジケーターを表示
-    base_path = get_base_path()
-    loading_icon_path = os.path.join(
-        base_path, "icons", "circular_progress.png")
-
-    loading_dialog = ft.AlertDialog(
-        title=ft.Row([
-            ft.Image(
-                src=loading_icon_path,
-                width=24,
-                height=24,
-            ),
-            ft.Text("情報を取得中...", size=12)
-        ],
-            vertical_alignment=ft.CrossAxisAlignment.CENTER),
-        content=ft.ProgressBar(width=200),
-        actions=[],
-        actions_alignment=ft.MainAxisAlignment.START,
-        modal=False,
-    )
-    page.overlay.append(loading_dialog)
-    loading_dialog.open = True
-    page.update()
+    loading_dialog = show_loading_dialog(page)
 
     try:
         results = diagnostics.search_memory_log()  # 診断結果を取得
         memory_list_view.controls.clear()
         logger.debug(f"Memory Logs: {results}")  # デバッグ用
+
         # 成功時のダイアログ
-        success_dialog = ft.AlertDialog(
-            content=ft.Text("診断結果の検索が終了しました。", size=12),
-            actions=[
-                ft.TextButton(
-                    "OK", on_click=lambda e: close_dialog(success_dialog, page)
-                )
-            ],
-            on_dismiss=lambda e: close_dialog(success_dialog, page),
-        )
-        page.overlay.append(success_dialog)
-        success_dialog.open = True
+        show_success_dialog(page, "診断結果の検索が終了しました。")
+
         # リストに並べる
         if not results:
             memory_list_view.controls.append(
@@ -297,14 +403,12 @@ def display_memory_diagnostics(
                             page.update()
                         ),
                         selected=(selected_memory_log.current == result),
-                        selected_color=ft.colors.BLUE,
+                        selected_color=ft.Colors.BLUE,
                     )
                 )
     finally:
         # ローディングインジケーターを閉じる
-        if loading_dialog in page.overlay:
-            page.overlay.remove(loading_dialog)
-        page.update()
+        hide_loading_dialog(page, loading_dialog)
 
 
 def display_memory_log_content(
@@ -319,7 +423,6 @@ def display_memory_log_content(
         memory_table_container (ft.Column): 詳細を表示するコンテナ。
     """
     memory_table_container.controls.clear()
-    label_width = 120  # ラベル部分の固定幅を調整
 
     # デバッグ用: 取得したログデータを表示
     logger.debug(f"Memory Log Content: {log}")
@@ -347,20 +450,21 @@ def display_memory_log_content(
                         ft.Row([
                             ft.Image(
                                 src=memory_icon_path,
-                                width=24,
-                                height=24,
+                                width=ICON_SIZE,
+                                height=ICON_SIZE,
                             ),
-                            ft.Text("ログの詳細", size=12, weight="bold")  # タイトルは太字
+                            ft.Text("ログの詳細", size=12,
+                                    weight=ft.FontWeight.BOLD)
                         ],
                             vertical_alignment=ft.CrossAxisAlignment.CENTER),
                         create_label_value_row(
-                            "SourceName:", f"{source_name}", label_width),
+                            "SourceName:", f"{source_name}"),
                         create_label_value_row(
-                            "Event ID:", f"{event_code}", label_width),
+                            "Event ID:", f"{event_code}"),
                         create_label_value_row("Time Generated:", f"{
-                                               time_generated}", label_width),
+                                               time_generated}"),
                         create_label_value_row(
-                            "Message:", f"{message}", label_width),
+                            "Message:", f"{message}"),
                     ],
                     spacing=5  # 行間のスペースを減少
                 ),
@@ -369,7 +473,7 @@ def display_memory_log_content(
             elevation=3,
             margin=ft.margin.symmetric(vertical=5),
         ),
-        animate={"duration": 500, "curve": ft.AnimationCurve.EASE_IN_OUT},
+        animate=ANIMATION_DURATION,
     )
     memory_table_container.controls.append(memory_card)
     page.update()
@@ -380,7 +484,7 @@ def display_memory_log_content(
 ####################
 
 
-def create_label_value_row(label: str, value: str, label_width: float = 120, value_width: Optional[float] = None) -> ft.Row:
+def create_label_value_row(label: str, value: str, label_width: float = LABEL_WIDTH, value_width: Optional[float] = None) -> ft.Row:
     """
     ラベルと値を含むRowを作成するヘルパー関数。
 
@@ -394,7 +498,7 @@ def create_label_value_row(label: str, value: str, label_width: float = 120, val
         ft.Row: ラベルと値を含むRowオブジェクト。
     """
     return ft.Row([
-        ft.Text(label, size=12, width=label_width, weight="bold"),
+        ft.Text(label, size=12, width=label_width, weight=ft.FontWeight.BOLD),
         ft.Text(value, size=12, width=value_width if value_width else None)
     ],
         vertical_alignment=ft.CrossAxisAlignment.START
@@ -402,7 +506,7 @@ def create_label_value_row(label: str, value: str, label_width: float = 120, val
 
 
 def create_card(
-    title: str, content_controls: List[ft.Control], icon_filename: str, width: float = 700, layout: str = "single_column"
+    title: str, content_controls: Sequence[ft.Control], icon_filename: str, width: float = CARD_WIDTH, layout: str = "single_column"
 ) -> ft.Container:
     """
     汎用的なカードを作成するヘルパー関数。
@@ -421,20 +525,27 @@ def create_card(
     icon_path = os.path.join(base_path, "icons", icon_filename)
 
     if layout == "numbered":
+        # numberedレイアウトの場合、content_controlsはList[List[Control]]形式
+        flattened_controls = []
+        for group in content_controls:
+            if isinstance(group, (list, tuple)):
+                flattened_controls.extend(group)
+            else:
+                flattened_controls.append(group)
         content = ft.Column(
-            [control for group in content_controls for control in group],
+            flattened_controls,
             spacing=3,  # 行間のスペースを減少
             expand=True
         )
     else:
         content = ft.Column(
-            content_controls,
+            list(content_controls),
             spacing=5,  # 行間のスペースを減少
             expand=True
         )
 
     return ft.Container(
-        width=width,  # 横幅を統一
+        width=width,
         content=ft.Card(
             content=ft.Container(
                 content=ft.Column(
@@ -442,22 +553,22 @@ def create_card(
                         ft.Row([
                             ft.Image(
                                 src=icon_path,
-                                width=24,
-                                height=24,
+                                width=ICON_SIZE,
+                                height=ICON_SIZE,
                             ),
-                            ft.Text(title, size=12, weight="bold")
+                            ft.Text(title, size=12, weight=ft.FontWeight.BOLD)
                         ],
                             vertical_alignment=ft.CrossAxisAlignment.CENTER),
                         content
                     ],
-                    spacing=5  # 行間のスペースを減少
+                    spacing=5
                 ),
                 padding=10
             ),
             elevation=3,
             margin=ft.margin.symmetric(vertical=5),
         ),
-        animate={"duration": 500, "curve": ft.AnimationCurve.EASE_IN_OUT},
+        animate=ANIMATION_DURATION,
     )
 
 
@@ -470,28 +581,8 @@ def display_system_info(page: ft.Page, system_info_container: ft.Column) -> None
         system_info_container (ft.Column): システム情報を表示するコンテナ。
     """
     # ローディングインジケーターを表示
-    base_path = get_base_path()
-    loading_icon_path = os.path.join(
-        base_path, "icons", "circular_progress.png")
-
-    loading_dialog = ft.AlertDialog(
-        title=ft.Row([
-            ft.Image(
-                src=loading_icon_path,
-                width=24,
-                height=24,
-            ),
-            ft.Text("情報を取得中...", size=12)
-        ],
-            vertical_alignment=ft.CrossAxisAlignment.CENTER),
-        content=ft.ProgressBar(width=200),  # 元は200 → 160
-        actions=[],
-        actions_alignment=ft.MainAxisAlignment.START,
-        modal=True,
-    )
-    page.overlay.append(loading_dialog)
-    loading_dialog.open = True
-    page.update()
+    loading_dialog = show_loading_dialog(page)
+    file_name = ""  # ファイル名の初期化
 
     try:
         # PC情報を取得
@@ -529,9 +620,9 @@ def display_system_info(page: ft.Page, system_info_container: ft.Column) -> None
 
         # CPU情報カードの作成
         if isinstance(cpu_info, dict):
+            cpu_name = str(cpu_info.get('Name', 'Unknown')).strip()
             cpu_items_text = [
-                create_label_value_row(
-                    "名称:", cpu_info.get('Name', 'Unknown').strip()),
+                create_label_value_row("名称:", cpu_name),
                 create_label_value_row(
                     "コア数:", f"{cpu_info.get('NumberOfCores', 'Unknown')}",
                     label_width=120
@@ -558,7 +649,7 @@ def display_system_info(page: ft.Page, system_info_container: ft.Column) -> None
             cpu_card = create_card(
                 title="CPU",
                 content_controls=[
-                    ft.Text("CPU情報の形式が不正です。", size=12, color=ft.colors.RED)],
+                    ft.Text("CPU情報の形式が不正です。", size=12, color=ft.Colors.RED)],
                 icon_filename="chip.png",
                 width=700,
                 layout="single_column"
@@ -574,7 +665,8 @@ def display_system_info(page: ft.Page, system_info_container: ft.Column) -> None
                 for module_idx, module in enumerate(pair, start=1):
                     module_title = f"モジュール{((pair_idx - 1) * 2) + module_idx}"
                     module_items = [
-                        ft.Text(module_title, size=12, weight="bold"),
+                        ft.Text(module_title, size=12,
+                                weight=ft.FontWeight.BOLD),
                         create_label_value_row("モデル番号:", module.get(
                             'ManufacturerAndModel', 'Unknown')),
                         create_label_value_row(
@@ -595,11 +687,11 @@ def display_system_info(page: ft.Page, system_info_container: ft.Column) -> None
             memory_card = create_card(
                 title="メモリ",
                 content_controls=[
-                    [ft.Text("メモリ情報の形式が不正です。", size=12, color=ft.colors.RED)]
+                    ft.Text("メモリ情報の形式が不正です。", size=12, color=ft.Colors.RED)
                 ],
                 icon_filename="memory.png",
                 width=700,
-                layout="numbered"
+                layout="single_column"
             )
             system_info_container.controls.append(memory_card)
 
@@ -622,7 +714,7 @@ def display_system_info(page: ft.Page, system_info_container: ft.Column) -> None
                 for gpu_idx, gpu in enumerate(pair, start=1):
                     gpu_title = f"GPU{((pair_idx - 1) * 2) + gpu_idx}"
                     module_items = [
-                        ft.Text(gpu_title, size=12, weight="bold"),
+                        ft.Text(gpu_title, size=12, weight=ft.FontWeight.BOLD),
                         create_label_value_row(
                             "モデル番号:", gpu.get('ModelNumber', 'Unknown')),
                         create_label_value_row(
@@ -643,11 +735,11 @@ def display_system_info(page: ft.Page, system_info_container: ft.Column) -> None
             gpu_card = create_card(
                 title="GPU",
                 content_controls=[
-                    [ft.Text("GPU情報の形式が不正です。", size=12, color=ft.colors.RED)]
+                    ft.Text("GPU情報の形式が不正です。", size=12, color=ft.Colors.RED)
                 ],
                 icon_filename="video_library.png",
                 width=700,
-                layout="numbered"
+                layout="single_column"
             )
             system_info_container.controls.append(gpu_card)
 
@@ -660,7 +752,8 @@ def display_system_info(page: ft.Page, system_info_container: ft.Column) -> None
                 for storage_idx, storage in enumerate(pair, start=1):
                     storage_title = f"ディスク{((pair_idx - 1) * 2) + storage_idx}"
                     module_items = [
-                        ft.Text(storage_title, size=12, weight="bold"),
+                        ft.Text(storage_title, size=12,
+                                weight=ft.FontWeight.BOLD),
                         create_label_value_row(
                             "モデル番号:", storage.get('ModelNumber', 'Unknown')),
                         create_label_value_row(
@@ -679,11 +772,11 @@ def display_system_info(page: ft.Page, system_info_container: ft.Column) -> None
             storage_card = create_card(
                 title="ストレージ",
                 content_controls=[
-                    [ft.Text("ストレージ情報の形式が不正です。", size=12, color=ft.colors.RED)]
+                    ft.Text("ストレージ情報の形式が不正です。", size=12, color=ft.Colors.RED)
                 ],
                 icon_filename="disk.png",
                 width=700,
-                layout="numbered"
+                layout="single_column"
             )
             system_info_container.controls.append(storage_card)
 
@@ -695,8 +788,9 @@ def display_system_info(page: ft.Page, system_info_container: ft.Column) -> None
 
         # CPU情報
         if isinstance(cpu_info, dict):
+            cpu_name = str(cpu_info.get('Name', 'Unknown')).strip()
             info_text += f"CPU:\n"
-            info_text += f"  名称: {cpu_info.get('Name', 'Unknown').strip()}\n"
+            info_text += f"  名称: {cpu_name}\n"
             info_text += f"  コア数: {cpu_info.get('NumberOfCores', 'Unknown')}\n"
             info_text += f"  スレッド数: {cpu_info.get(
                 'NumberOfLogicalProcessors', 'Unknown')}\n"
@@ -746,9 +840,15 @@ def display_system_info(page: ft.Page, system_info_container: ft.Column) -> None
         try:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             file_name = f"PC_info_{timestamp}.txt"
-            with open(file_name, "w", encoding="utf-8") as f:
+
+            # log フォルダのパスを設定 (実行ファイルと同じディレクトリに保存)
+            log_folder = os.path.join(get_executable_dir(), "log")
+            os.makedirs(log_folder, exist_ok=True)  # log フォルダが存在しない場合は作成
+            file_path = os.path.join(log_folder, file_name)
+
+            with open(file_path, "w", encoding="utf-8") as f:
                 f.write(info_text)
-            logger.info(f"PC情報を '{file_name}' に保存しました。")
+            logger.info(f"PC情報を '{file_path}' に保存しました。")
         except Exception as file_error:
             logger.exception("PC情報のテキストファイルへの保存中にエラーが発生しました:")
             # エラーダイアログを表示
@@ -756,7 +856,7 @@ def display_system_info(page: ft.Page, system_info_container: ft.Column) -> None
                 title=ft.Text("エラー", size=12),
                 content=ft.Column([
                     ft.Text("PC情報のテキストファイルへの保存中にエラーが発生しました。", size=12),
-                    ft.Text(str(file_error), color=ft.colors.RED, size=12),
+                    ft.Text(str(file_error), color=ft.Colors.RED, size=12),
                 ]),
                 actions=[ft.TextButton(
                     "OK", on_click=lambda e: close_dialog(error_dialog, page))],
@@ -767,8 +867,8 @@ def display_system_info(page: ft.Page, system_info_container: ft.Column) -> None
 
         # 成功時のダイアログ
         success_dialog = ft.AlertDialog(
-            content=ft.Text(f"PC情報の取得が成功しました。、'{
-                            file_name}' にログを保存しました。", size=12),
+            content=ft.Text(
+                f"PC情報の取得が成功しました。'{file_name}' にログを保存しました。", size=12),
             actions=[ft.TextButton(
                 "OK", on_click=lambda e: close_dialog(success_dialog, page))],
             on_dismiss=lambda e: close_dialog(success_dialog, page),
@@ -783,7 +883,7 @@ def display_system_info(page: ft.Page, system_info_container: ft.Column) -> None
             title=ft.Text("エラー", size=12),
             content=ft.Column([
                 ft.Text("PC情報の取得中にエラーが発生しました。", size=12),
-                ft.Text(str(e), color=ft.colors.RED, size=12),
+                ft.Text(str(e), color=ft.Colors.RED, size=12),
             ]),
             actions=[ft.TextButton(
                 "OK", on_click=lambda e: close_dialog(error_dialog, page))],
@@ -792,21 +892,7 @@ def display_system_info(page: ft.Page, system_info_container: ft.Column) -> None
         page.overlay.append(error_dialog)
         error_dialog.open = True
     finally:
-        if loading_dialog in page.overlay:
-            page.overlay.remove(loading_dialog)
-        page.update()
-
-
-def close_dialog(dialog: ft.AlertDialog, page: ft.Page) -> None:
-    """
-    ダイアログを閉じるための関数。
-
-    Parameters:
-        dialog (ft.AlertDialog): 閉じるダイアログオブジェクト。
-        page (ft.Page): Fletのページオブジェクト。
-    """
-    dialog.open = False
-    page.update()
+        hide_loading_dialog(page, loading_dialog)
 
 
 def main(page: ft.Page) -> None:
@@ -819,8 +905,8 @@ def main(page: ft.Page) -> None:
     # ページの設定
     page.title = "PcInfo"
     page.padding = 20
-    page.window.width = 800     # 横幅を800に設定
-    page.window.height = 1100    # 高さを1100に設定
+    page.window.width = WINDOW_WIDTH
+    page.window.height = WINDOW_HEIGHT
 
     # 選択されたストレージ診断ログファイル名を保持する変数
     selected_storage_log = ft.Ref[str]()
@@ -861,7 +947,7 @@ def main(page: ft.Page) -> None:
                 expand=True,
             ),
         ],
-        scroll=True  # スクロールを有効にする
+        scroll=ft.ScrollMode.AUTO
     )
 
     # タブ2の内容（メモリ診断）
@@ -881,20 +967,20 @@ def main(page: ft.Page) -> None:
                         on_click=lambda e: diagnostics.run_memory_diagnostics(),
                     ),
                 ],
-                spacing=10  # スペーシングを適切に調整
+                spacing=10
             ),
-            ft.Text("診断ログ一覧:", size=12, weight="bold"),
+            ft.Text("診断ログ一覧:", size=12, weight=ft.FontWeight.BOLD),
             ft.Container(
                 content=memory_list_view,
-                height=150,
-                width=700,
-                border=ft.border.all(1.5, ft.colors.GREY),
+                height=LIST_VIEW_HEIGHT,
+                width=CARD_WIDTH,
+                border=ft.border.all(1.5, ft.Colors.GREY),
                 padding=10,
             ),
             ft.Divider(height=20, thickness=2),
             ft.Container(content=memory_table_container, expand=True),
         ],
-        scroll=True  # スクロールを有効にする
+        scroll=ft.ScrollMode.AUTO
     )
 
     # タブ3(ストレージ診断)
@@ -915,20 +1001,20 @@ def main(page: ft.Page) -> None:
                             page),
                     ),
                 ],
-                spacing=10  # スペーシングを適切に調整
+                spacing=10
             ),
-            ft.Text("診断ログ一覧:", size=12, weight="bold"),
+            ft.Text("診断ログ一覧:", size=12, weight=ft.FontWeight.BOLD),
             ft.Container(
                 content=storage_list_view,
-                height=150,
-                width=700,
-                border=ft.border.all(1.5, ft.colors.GREY),
+                height=LIST_VIEW_HEIGHT,
+                width=CARD_WIDTH,
+                border=ft.border.all(1.5, ft.Colors.GREY),
                 padding=10,
             ),
             ft.Divider(height=20, thickness=2),
             ft.Container(content=storage_table_container, expand=True),
         ],
-        scroll=True  # スクロールを有効にする
+        scroll=ft.ScrollMode.AUTO
     )
 
     # タブ構成

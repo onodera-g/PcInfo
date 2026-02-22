@@ -1,10 +1,8 @@
 # diagnostics.py
 import wmi
-import pythoncom  # 追加
+import pythoncom
 from datetime import datetime, timedelta
 import subprocess
-import os
-import glob
 
 
 def get_memory_event_log(start_time, end_time, event_id_filter=None):
@@ -74,6 +72,9 @@ def search_memory_log():
 def run_memory_diagnostics():
     """
     Windowsのメモリ診断ツールを実行する。再起動を要求されるため、ユーザー確認が必要。
+
+    Returns:
+        bool: 正常に起動した場合True、失敗した場合False。
     """
     try:
         # メモリ診断を管理者権限で実行する
@@ -82,38 +83,3 @@ def run_memory_diagnostics():
     except subprocess.CalledProcessError as e:
         print(f"メモリ診断の実行に失敗しました: {e}")
         return False
-
-
-def search_memory_diagnostic_logs():
-    """
-    メモリ診断ログフォルダ内の、過去7日間のイベントID 1101, 1102のログファイルを検索し、
-    ログファイル名のリストを返します。
-    """
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    log_folder = os.path.join(current_dir, "memory_logs")  # メモリ診断ログフォルダ
-    pattern = os.path.join(log_folder, "memory_diagnostic_log_*.txt")
-    log_files = glob.glob(pattern)
-
-    if not log_files:
-        return []
-
-    # 過去7日間のログファイルのみをフィルタ
-    seven_days_ago = datetime.now() - timedelta(days=7)
-    recent_logs = [
-        log_file for log_file in log_files
-        if os.path.getmtime(log_file) >= seven_days_ago.timestamp()
-    ]
-
-    # イベントID 1101, 1102のファイル名をフィルタ
-    filtered_logs = [
-        log_file for log_file in recent_logs
-        if "1101" in log_file or "1102" in log_file
-    ]
-
-    # ログファイルを最新順にソート
-    log_files_sorted = sorted(
-        filtered_logs, key=os.path.getmtime, reverse=True)
-    log_filenames = [os.path.basename(log_file)
-                     for log_file in log_files_sorted]
-
-    return log_filenames
