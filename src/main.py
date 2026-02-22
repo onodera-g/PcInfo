@@ -47,7 +47,7 @@ def get_base_path() -> str:
     """
     実行ファイルのディレクトリを取得します。
     PyInstallerでコンパイルされた場合でも対応します。
-
+    
     ワンファイル形式の場合: sys._MEIPASS (リソースファイル用)
 
     Returns:
