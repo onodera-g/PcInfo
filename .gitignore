@@ -25,15 +25,11 @@ ENV/
 env/
 
 # ログファイル
-src/CrystalDiskInfo/CdiResource/
-src/CrystalDiskInfo/License
-src/CrystalDiskInfo/Smart
-src/CrystalDiskInfo/DiskInfo.ini
-src/CrystalDiskInfo/DiskInfo32.exe
-src/CrystalDiskInfo/DiskInfo64.exe
-src/CrystalDiskInfo/DiskInfoA64.exe
-src/CrystalDiskInfo/ReadMe.txt
-*.txt
+src/CrystalDiskInfo/
+src/log/
+src/IPDT_4.1.9.41_src/
+
+
 
 # IDE関連
 .vscode/

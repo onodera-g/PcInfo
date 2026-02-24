@@ -46,7 +46,7 @@ def get_cpu_info() -> Dict[str, Union[str, int]]:
     Returns:
         Dict[str, Union[str, int]]: CPU情報。取得に失敗した場合は空辞書。
     """
-    command = "Get-CimInstance Win32_Processor | Select-Object Name, NumberOfCores, NumberOfLogicalProcessors, MaxClockSpeed | ConvertTo-Json -Compress"
+    command = "Get-CimInstance Win32_Processor | Select-Object Name, NumberOfCores, NumberOfLogicalProcessors, MaxClockSpeed, Stepping, Revision | ConvertTo-Json -Compress"
     cpu_data = run_powershell_command(command)
     if not cpu_data:
         logger.error("CPU情報の取得に失敗しました。")
@@ -59,7 +59,9 @@ def get_cpu_info() -> Dict[str, Union[str, int]]:
         "Name": cpu_data.get("Name", "Unknown"),
         "NumberOfCores": cpu_data.get("NumberOfCores", "Unknown"),
         "NumberOfLogicalProcessors": cpu_data.get("NumberOfLogicalProcessors", "Unknown"),
-        "MaxClockSpeed": cpu_data.get("MaxClockSpeed", "Unknown")
+        "MaxClockSpeed": cpu_data.get("MaxClockSpeed", "Unknown"),
+        "Stepping": cpu_data.get("Stepping", "Unknown"),
+        "Revision": cpu_data.get("Revision", "Unknown")
     }
     logger.debug(f"取得したCPU情報: {cpu_info}")
     return cpu_info
@@ -228,11 +230,12 @@ def get_gpu_info() -> List[Dict[str, str]]:
                     continue
                 name, memory, driver_version = parts
                 try:
-                    memory_gb = float(memory.strip().split()[
-                                      0]) / 1024  # メモリサイズをMBからGBに変換
+                    # nvidia-smiはMiB単位で出力するため、1024で割ってGiBに変換
+                    memory_mib = float(memory.strip().split()[0])
+                    memory_gib = memory_mib / 1024
                     gpus.append({
                         "ModelNumber": name.strip(),
-                        "AdapterRAMGB": f"{memory_gb:.2f} GB",
+                        "AdapterRAMGB": f"{memory_gib:.2f} GB",
                         "DriverVersion": driver_version.strip()
                     })
                 except (ValueError, IndexError) as e:
@@ -291,33 +294,56 @@ def get_gpu_info_via_powershell() -> List[Dict[str, str]]:
     return formatted_gpus
 
 
-def get_motherboard_info() -> str:
+def get_motherboard_info() -> Dict[str, str]:
     """
-    PowerShellのGet-CimInstanceコマンドレットを使用してマザーボード情報を取得します。
+    PowerShellのGet-CimInstanceコマンドレットを使用してマザーボード情報とBIOS情報を取得します。
 
     Returns:
-        str: マザーボード情報。取得に失敗した場合は "Unknown"。
+        Dict[str, str]: マザーボード情報とBIOSバージョン。取得に失敗した場合はデフォルト値。
     """
-    command = "Get-CimInstance Win32_BaseBoard | Select-Object Manufacturer, Product, Version | ConvertTo-Json -Compress"
-    motherboard_data = run_powershell_command(command)
-    if not motherboard_data:
-        logger.error("マザーボード情報の取得に失敗しました。")
-        return "Unknown"
-    if isinstance(motherboard_data, list):
-        motherboard = motherboard_data[0]
-    elif isinstance(motherboard_data, dict):
-        motherboard = motherboard_data
+    # マザーボード情報の取得
+    mb_command = "Get-CimInstance Win32_BaseBoard | Select-Object Manufacturer, Product, Version | ConvertTo-Json -Compress"
+    motherboard_data = run_powershell_command(mb_command)
+    
+    motherboard_model = "Unknown"
+    if motherboard_data:
+        if isinstance(motherboard_data, list):
+            motherboard = motherboard_data[0]
+        elif isinstance(motherboard_data, dict):
+            motherboard = motherboard_data
+        else:
+            motherboard = {}
+        
+        manufacturer = motherboard.get("Manufacturer", "Unknown")
+        product = motherboard.get("Product", "Unknown")
+        version = motherboard.get("Version", "Unknown")
+        motherboard_model = f"{manufacturer} {product} {version}".strip()
+        logger.debug(f"取得したマザーボード情報: {motherboard_model}")
     else:
-        logger.error("マザーボード情報の形式が不正です。")
-        return "Unknown"
-
-    manufacturer = motherboard.get("Manufacturer", "Unknown")
-    product = motherboard.get("Product", "Unknown")
-    version = motherboard.get("Version", "Unknown")
-
-    motherboard_info = f"{manufacturer} {product} {version}".strip()
-    logger.debug(f"取得したマザーボード情報: {motherboard_info}")
-    return motherboard_info if motherboard_info else "Unknown"
+        logger.error("マザーボード情報の取得に失敗しました。")
+    
+    # BIOS情報の取得
+    bios_command = "Get-CimInstance Win32_BIOS | Select-Object SMBIOSBIOSVersion | ConvertTo-Json -Compress"
+    bios_data = run_powershell_command(bios_command)
+    
+    bios_version = "Unknown"
+    if bios_data:
+        if isinstance(bios_data, list):
+            bios = bios_data[0]
+        elif isinstance(bios_data, dict):
+            bios = bios_data
+        else:
+            bios = {}
+        
+        bios_version = bios.get("SMBIOSBIOSVersion", "Unknown")
+        logger.debug(f"取得したBIOSバージョン: {bios_version}")
+    else:
+        logger.error("BIOS情報の取得に失敗しました。")
+    
+    return {
+        "Model": motherboard_model if motherboard_model else "Unknown",
+        "BIOSVersion": bios_version
+    }
 
 
 class COMInitializer:

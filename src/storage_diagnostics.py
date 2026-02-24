@@ -51,6 +51,13 @@ def run_CrystalDiskInfo(executable_path: str, parameters: str) -> bool:
     Returns:
         bool: 実行が成功した場合はTrue、失敗した場合はFalse。
     """
+    # 管理者権限チェック
+    is_admin = ctypes.windll.shell32.IsUserAnAdmin() != 0
+    if is_admin:
+        logger.info("CrystalDiskInfo実行前: アプリケーションは管理者権限で実行されています。")
+    else:
+        logger.warning("CrystalDiskInfo実行前: アプリケーションは管理者権限で実行されていません。")
+    
     try:
         # ShellExecuteW を使用して管理者として実行
         result = ctypes.windll.shell32.ShellExecuteW(
@@ -183,23 +190,30 @@ def save_storage_info(disks: List[Dict[str, str]], parsed_log_file_path: str) ->
         logger.exception(f"解析済み情報の保存中にエラーが発生しました: {e}")
 
 
-def get_CrystalDiskInfo_log() -> bool:
+def get_CrystalDiskInfo_log() -> tuple[bool, Optional[str]]:
     """
     DiskInfo32.exe を管理者として実行し、/CopyExit オプションでログを保存して終了します。
     タイムスタンプ付きのログファイルとして保存し、解析結果を新たなテキストファイルに保存します。
 
     Returns:
-        bool: 処理が成功した場合はTrue、失敗した場合はFalse。
+        tuple[bool, Optional[str]]: (成功/失敗, エラーメッセージ)
     """
     exe_dir = get_executable_dir()
 
+    # CrystalDiskInfoフォルダの存在確認
+    crystal_disk_info_dir = os.path.join(exe_dir, "CrystalDiskInfo")
+    if not os.path.exists(crystal_disk_info_dir):
+        error_msg = "CrystalDiskInfoが見つかりません。\nPcinfo.exeと同じディレクトリにCrystalDiskInfoのポータブル版のフォルダを配置してください。\n詳細はREADMEをご確認ください。"
+        logger.error(error_msg)
+        return False, error_msg
+
     # DiskInfo32.exe のパスを取得 (実行ファイルと同じディレクトリ)
-    executable_path = os.path.join(
-        exe_dir, "CrystalDiskInfo", "DiskInfo32.exe")
+    executable_path = os.path.join(crystal_disk_info_dir, "DiskInfo32.exe")
 
     if not os.path.exists(executable_path):
-        logger.error(f"DiskInfo32.exe が見つかりません: {executable_path}")
-        return False
+        error_msg = "CrystalDiskInfoが見つかりません。\nPcinfo.exeと同じディレクトリにCrystalDiskInfoのポータブル版のフォルダを配置してください。\n詳細はREADMEをご確認ください。"
+        logger.error(error_msg)
+        return False, error_msg
 
     # デフォルトのログファイルパス
     log_file_default = os.path.join(
@@ -226,8 +240,9 @@ def get_CrystalDiskInfo_log() -> bool:
 
     # DiskInfo32.exe を管理者として /CopyExit オプションで実行
     if not run_CrystalDiskInfo(executable_path, "/CopyExit"):
-        logger.error("DiskInfo32.exe の実行に失敗しました。")
-        return False
+        error_msg = "DiskInfo32.exeの実行に失敗しました。\n管理者権限が必要です。"
+        logger.error(error_msg)
+        return False, error_msg
 
     # DiskInfo32.exe が終了するまで待機（最大10秒）
     timeout = 10
@@ -237,21 +252,24 @@ def get_CrystalDiskInfo_log() -> bool:
             logger.info("DiskInfo32.exe のプロセスが終了しました。")
             break
         if time.time() - start_time > timeout:
-            logger.error("DiskInfo32.exe の終了を待機中にタイムアウトしました。")
-            return False
+            error_msg = "DiskInfo32.exeの終了を待機中にタイムアウトしました。"
+            logger.error(error_msg)
+            return False, error_msg
         time.sleep(0.5)
 
     # DiskInfo.txt が存在するか確認
     if not os.path.exists(log_file_default):
-        logger.error(f"ログファイルが見つかりません: {log_file_default}")
-        return False
+        error_msg = f"ログファイルが生成されませんでした: {log_file_default}"
+        logger.error(error_msg)
+        return False, error_msg
     else:
         logger.info(f"ログファイルが見つかりました: {log_file_default}")
 
     # DiskInfo.txt が空でないか確認
     if os.path.getsize(log_file_default) == 0:
-        logger.error(f"ログファイルが空です: {log_file_default}")
-        return False
+        error_msg = f"生成されたログファイルが空です: {log_file_default}"
+        logger.error(error_msg)
+        return False, error_msg
     else:
         logger.info(f"ログファイルにデータが含まれています: {log_file_default}")
 
@@ -262,8 +280,9 @@ def get_CrystalDiskInfo_log() -> bool:
             dst.write(content)
         logger.info(f"ログファイルが保存されました: {path_CrystalDiskInfo_log}")
     except Exception as e:
-        logger.exception(f"ログファイルのコピー中にエラーが発生しました: {e}")
-        return False
+        error_msg = f"ログファイルのコピー中にエラーが発生しました: {str(e)}"
+        logger.exception(error_msg)
+        return False, error_msg
 
     # 解析済み情報を抽出
     disks = get_storage_log(content)
@@ -283,7 +302,7 @@ def get_CrystalDiskInfo_log() -> bool:
         logger.exception(f"元のログファイルの削除中にエラーが発生しました: {e}")
         # 削除に失敗しても処理を続行
 
-    return True
+    return True, None
 
 
 def search_storage_log() -> List[str]:

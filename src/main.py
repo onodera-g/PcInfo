@@ -7,7 +7,9 @@ import storage_diagnostics
 import system_info
 from datetime import datetime
 import sys
+import subprocess
 from typing import Optional, Union, Dict, List, Sequence
+import ctypes
 
 import logging
 
@@ -41,6 +43,20 @@ formatter = logging.Formatter(
 )
 handler.setFormatter(formatter)
 logger.addHandler(handler)
+
+
+def is_admin() -> bool:
+    """
+    現在のプロセスが管理者権限で実行されているかを確認します。
+
+    Returns:
+        bool: 管理者権限で実行されている場合True、そうでない場合False。
+    """
+    try:
+        return ctypes.windll.shell32.IsUserAnAdmin() != 0
+    except Exception as e:
+        logger.error(f"管理者権限の確認に失敗しました: {e}")
+        return False
 
 
 def get_base_path() -> str:
@@ -338,13 +354,18 @@ def display_storage_diagnostics_with_dialog(page: ft.Page) -> None:
     loading_dialog = show_loading_dialog(page)
 
     try:
-        result = storage_diagnostics.get_CrystalDiskInfo_log()  # ストレージ診断を実行
+        result, error_message = storage_diagnostics.get_CrystalDiskInfo_log()  # ストレージ診断を実行
         if result:
             # 成功時のダイアログ
             show_success_dialog(page, "ストレージ診断が実行され、ログが保存されました。")
         else:
-            # 失敗時のダイアログ
-            show_error_dialog(page, "エラー", "ストレージ診断の実行に失敗しました。")
+            # 失敗時のダイアログ（詳細なエラーメッセージを表示）
+            show_error_dialog(
+                page,
+                "エラー",
+                "ストレージ診断の実行に失敗しました。",
+                error_message if error_message else "不明なエラーが発生しました。"
+            )
 
     except Exception as e:
         # エラーダイアログを表示
@@ -479,6 +500,8 @@ def display_memory_log_content(
     page.update()
 
 
+####################
+#    システム情報
 ####################
 #    システム情報
 ####################
@@ -621,6 +644,9 @@ def display_system_info(page: ft.Page, system_info_container: ft.Column) -> None
         # CPU情報カードの作成
         if isinstance(cpu_info, dict):
             cpu_name = str(cpu_info.get('Name', 'Unknown')).strip()
+            stepping = cpu_info.get('Stepping', 'Unknown')
+            revision = cpu_info.get('Revision', 'Unknown')
+            
             cpu_items_text = [
                 create_label_value_row("名称:", cpu_name),
                 create_label_value_row(
@@ -634,6 +660,14 @@ def display_system_info(page: ft.Page, system_info_container: ft.Column) -> None
                 create_label_value_row(
                     "最大クロック速度:", f"{cpu_info.get(
                         'MaxClockSpeed', 'Unknown')} MHz",
+                    label_width=120
+                ),
+                create_label_value_row(
+                    "リビジョン:", f"{revision}",
+                    label_width=120
+                ),
+                create_label_value_row(
+                    "ステッピング:", f"{stepping}",
                     label_width=120
                 ),
             ]
@@ -696,14 +730,27 @@ def display_system_info(page: ft.Page, system_info_container: ft.Column) -> None
             system_info_container.controls.append(memory_card)
 
         # マザーボード情報カードの作成
-        motherboard_card = create_card(
-            title="マザーボード",
-            content_controls=[create_label_value_row(
-                "モデル番号:", motherboard_info if motherboard_info else 'Unknown')],
-            icon_filename="device_hub.png",
-            width=700,
-            layout="single_column"
-        )
+        if isinstance(motherboard_info, dict):
+            motherboard_card = create_card(
+                title="マザーボード",
+                content_controls=[
+                    create_label_value_row("モデル番号:", motherboard_info.get('Model', 'Unknown')),
+                    create_label_value_row("BIOSバージョン:", motherboard_info.get('BIOSVersion', 'Unknown'))
+                ],
+                icon_filename="device_hub.png",
+                width=700,
+                layout="single_column"
+            )
+        else:
+            motherboard_card = create_card(
+                title="マザーボード",
+                content_controls=[
+                    create_label_value_row("モデル番号:", str(motherboard_info) if motherboard_info else 'Unknown')
+                ],
+                icon_filename="device_hub.png",
+                width=700,
+                layout="single_column"
+            )
         system_info_container.controls.append(motherboard_card)
 
         # GPU情報カードの作成
@@ -789,13 +836,17 @@ def display_system_info(page: ft.Page, system_info_container: ft.Column) -> None
         # CPU情報
         if isinstance(cpu_info, dict):
             cpu_name = str(cpu_info.get('Name', 'Unknown')).strip()
+            stepping = cpu_info.get('Stepping', 'Unknown')
+            revision = cpu_info.get('Revision', 'Unknown')
             info_text += f"CPU:\n"
             info_text += f"  名称: {cpu_name}\n"
             info_text += f"  コア数: {cpu_info.get('NumberOfCores', 'Unknown')}\n"
             info_text += f"  スレッド数: {cpu_info.get(
                 'NumberOfLogicalProcessors', 'Unknown')}\n"
             info_text += f"  最大クロック速度: {cpu_info.get(
-                'MaxClockSpeed', 'Unknown')} MHz\n\n"
+                'MaxClockSpeed', 'Unknown')} MHz\n"
+            info_text += f"  リビジョン: {revision}\n"
+            info_text += f"  ステッピング: {stepping}\n\n"
         else:
             info_text += "CPU情報の形式が不正です。\n\n"
 
@@ -811,8 +862,12 @@ def display_system_info(page: ft.Page, system_info_container: ft.Column) -> None
             info_text += "メモリ情報の形式が不正です。\n\n"
 
         # マザーボード情報
-        info_text += f"マザーボード:\n  モデル番号: {
-            motherboard_info if motherboard_info else 'Unknown'}\n\n"
+        if isinstance(motherboard_info, dict):
+            info_text += f"マザーボード:\n"
+            info_text += f"  モデル番号: {motherboard_info.get('Model', 'Unknown')}\n"
+            info_text += f"  BIOSバージョン: {motherboard_info.get('BIOSVersion', 'Unknown')}\n\n"
+        else:
+            info_text += f"マザーボード:\n  モデル番号: {motherboard_info if motherboard_info else 'Unknown'}\n\n"
 
         # GPU情報
         if isinstance(gpu_info, list) and all(isinstance(gpu, dict) for gpu in gpu_info):
@@ -902,8 +957,17 @@ def main(page: ft.Page) -> None:
     Parameters:
         page (ft.Page): Fletのページオブジェクト。
     """
+    # 管理者権限の確認とログ記録
+    admin_status = is_admin()
+    if admin_status:
+        logger.info("アプリケーションは管理者権限で実行されています。")
+        admin_text = " (管理者)"
+    else:
+        logger.info("アプリケーションは標準ユーザー権限で実行されています。")
+        admin_text = ""
+
     # ページの設定
-    page.title = "PcInfo"
+    page.title = f"PcInfo{admin_text}"
     page.padding = 20
     page.window.width = WINDOW_WIDTH
     page.window.height = WINDOW_HEIGHT
