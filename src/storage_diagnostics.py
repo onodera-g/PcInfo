@@ -57,7 +57,7 @@ def run_CrystalDiskInfo(executable_path: str, parameters: str) -> bool:
         logger.info("CrystalDiskInfo実行前: アプリケーションは管理者権限で実行されています。")
     else:
         logger.warning("CrystalDiskInfo実行前: アプリケーションは管理者権限で実行されていません。")
-    
+
     try:
         # ShellExecuteW を使用して管理者として実行
         result = ctypes.windll.shell32.ShellExecuteW(
@@ -176,15 +176,26 @@ def save_storage_info(disks: List[Dict[str, str]], parsed_log_file_path: str) ->
     """
     try:
         with open(parsed_log_file_path, 'w', encoding='utf-8') as f:
+            # ヘッダーを追加
+            f.write("=" * 80 + "\n")
+            f.write(
+                f"Storage Information Log - {datetime.now().strftime('%Y/%m/%d %H:%M')}\n")
+            f.write("=" * 80 + "\n\n")
+
             for idx, disk in enumerate(disks, start=1):
-                f.write(f"ディスク {idx}:\n")
-                f.write(f"  Model: {disk['Model']}\n")
-                f.write(f"  Disk Size: {disk['Disk Size']}\n")
-                f.write(f"  Interface: {disk['Interface']}\n")
-                f.write(f"  Power On Hours: {disk['Power On Hours']}\n")
-                f.write(f"  Power On Count: {disk['Power On Count']}\n")
-                f.write(f"  Host Writes: {disk['Host Writes']}\n")
-                f.write(f"  Health Status: {disk['Health Status']}\n\n")
+                f.write(f"[ディスク {idx}]\n")
+                f.write(f"  Model            : {disk['Model']}\n")
+                f.write(f"  Disk Size        : {disk['Disk Size']}\n")
+                f.write(f"  Interface        : {disk['Interface']}\n")
+                f.write(f"  Power On Hours   : {disk['Power On Hours']}\n")
+                f.write(f"  Power On Count   : {disk['Power On Count']}\n")
+                f.write(f"  Host Writes      : {disk['Host Writes']}\n")
+                f.write(f"  Health Status    : {disk['Health Status']}\n")
+                f.write("-" * 80 + "\n\n")
+
+            # フッターを追加
+            f.write("=" * 80 + "\n")
+
         logger.info(f"解析済みのディスク情報が保存されました: {parsed_log_file_path}")
     except Exception as e:
         logger.exception(f"解析済み情報の保存中にエラーが発生しました: {e}")
@@ -219,14 +230,14 @@ def get_CrystalDiskInfo_log() -> tuple[bool, Optional[str]]:
     log_file_default = os.path.join(
         exe_dir, "CrystalDiskInfo", "DiskInfo.txt")
 
-    # タイムスタンプの生成
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    # タイムスタンプの生成（統一形式: YYYYMMDD_HHMM）
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M")
 
     # log フォルダのパスを設定 (実行ファイルと同じディレクトリ)
     log_folder = os.path.join(exe_dir, "log")
     os.makedirs(log_folder, exist_ok=True)  # log フォルダが存在しない場合は作成
 
-    # log フォルダ内のログファイルパスに変更
+    # log フォルダ内のログファイルパスに変更（命名規則を統一）
     path_CrystalDiskInfo_log = os.path.join(
         log_folder, f"storage_health_log_{timestamp}.txt"
     )
@@ -332,6 +343,7 @@ def search_storage_log() -> List[str]:
 def get_storage_info(log_filename: str) -> Optional[List[Dict[str, str]]]:
     """
     指定されたストレージ診断ログファイルの内容を辞書形式で返します。
+    新しいログ形式（Storage Information Log形式）に対応。
 
     Parameters:
         log_filename (str): 解析対象のログファイル名。
@@ -339,8 +351,8 @@ def get_storage_info(log_filename: str) -> Optional[List[Dict[str, str]]]:
     Returns:
         Optional[List[Dict[str, str]]]: パースされたディスク情報のリスト。エラー時はNone。
     """
-    base_path = get_base_path()
-    log_folder = os.path.join(base_path, "log")
+    exe_dir = get_executable_dir()
+    log_folder = os.path.join(exe_dir, "log")
     log_file_path = os.path.join(log_folder, log_filename)
 
     if not os.path.exists(log_file_path):
@@ -351,21 +363,38 @@ def get_storage_info(log_filename: str) -> Optional[List[Dict[str, str]]]:
         with open(log_file_path, 'r', encoding='utf-8') as f:
             content = f.read()
 
-        # ログ内容をパースして辞書に変換
-        disks = DISK_INFO_PATTERN.findall(content)
-
+        # 新しいログ形式をパース
         parsed_disks = []
-        for disk in disks:
-            disk_dict = {}
-            lines = disk.strip().split('\n')
-            for line in lines:
-                if ':' in line:
-                    key, value = line.strip().split(':', 1)
-                    # 'ディスク 1' や 'ディスク 2' のキーを除外
-                    if key.strip().startswith("ディスク"):
-                        continue
-                    disk_dict[key.strip()] = value.strip()
-            parsed_disks.append(disk_dict)
+        current_disk = {}
+        in_section = False
+
+        for line in content.split('\n'):
+            line = line.strip()
+
+            # セクションの開始を検出
+            if line.startswith('[ディスク ') and line.endswith(']'):
+                # 前のディスク情報を保存
+                if current_disk:
+                    parsed_disks.append(current_disk)
+                current_disk = {}
+                in_section = True
+            # セクションの終了（区切り線）を検出
+            elif line.startswith('-' * 10):
+                if current_disk:
+                    parsed_disks.append(current_disk)
+                    current_disk = {}
+                in_section = False
+            # キー:値のペアを解析（セクション内のみ）
+            elif in_section and ':' in line and not line.startswith('='):
+                parts = line.split(':', 1)
+                if len(parts) == 2:
+                    key = parts[0].strip()
+                    value = parts[1].strip()
+                    current_disk[key] = value
+
+        # 最後のディスク情報を保存（区切り線がない場合に備えて）
+        if current_disk:
+            parsed_disks.append(current_disk)
 
         logger.debug(f"パースされたディスク情報: {parsed_disks}")
         return parsed_disks

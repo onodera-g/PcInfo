@@ -5,6 +5,7 @@ import os
 import diagnostics
 import storage_diagnostics
 import system_info
+import gpu_diagnostics
 from datetime import datetime
 import sys
 import subprocess
@@ -646,7 +647,7 @@ def display_system_info(page: ft.Page, system_info_container: ft.Column) -> None
             cpu_name = str(cpu_info.get('Name', 'Unknown')).strip()
             stepping = cpu_info.get('Stepping', 'Unknown')
             revision = cpu_info.get('Revision', 'Unknown')
-            
+
             cpu_items_text = [
                 create_label_value_row("名称:", cpu_name),
                 create_label_value_row(
@@ -734,8 +735,10 @@ def display_system_info(page: ft.Page, system_info_container: ft.Column) -> None
             motherboard_card = create_card(
                 title="マザーボード",
                 content_controls=[
-                    create_label_value_row("モデル番号:", motherboard_info.get('Model', 'Unknown')),
-                    create_label_value_row("BIOSバージョン:", motherboard_info.get('BIOSVersion', 'Unknown'))
+                    create_label_value_row(
+                        "モデル番号:", motherboard_info.get('Model', 'Unknown')),
+                    create_label_value_row(
+                        "BIOSバージョン:", motherboard_info.get('BIOSVersion', 'Unknown'))
                 ],
                 icon_filename="device_hub.png",
                 width=700,
@@ -745,7 +748,8 @@ def display_system_info(page: ft.Page, system_info_container: ft.Column) -> None
             motherboard_card = create_card(
                 title="マザーボード",
                 content_controls=[
-                    create_label_value_row("モデル番号:", str(motherboard_info) if motherboard_info else 'Unknown')
+                    create_label_value_row("モデル番号:", str(
+                        motherboard_info) if motherboard_info else 'Unknown')
                 ],
                 icon_filename="device_hub.png",
                 width=700,
@@ -828,73 +832,86 @@ def display_system_info(page: ft.Page, system_info_container: ft.Column) -> None
             system_info_container.controls.append(storage_card)
 
         # テキスト形式での情報出力
-        info_text = f"--- PC情報詳細 ---\n\n"
+        info_text = "=" * 80 + "\n"
+        info_text += f"PC Information Log - {datetime.now().strftime('%Y/%m/%d %H:%M')}\n"
+        info_text += "=" * 80 + "\n\n"
 
         # OS情報
-        info_text += f"OS:\n  名称: {os_name}\n  バージョン: {os_version}\n\n"
+        info_text += f"[OS]\n"
+        info_text += f"  名称             : {os_name}\n"
+        info_text += f"  バージョン       : {os_version}\n"
+        info_text += "-" * 80 + "\n\n"
 
         # CPU情報
         if isinstance(cpu_info, dict):
             cpu_name = str(cpu_info.get('Name', 'Unknown')).strip()
             stepping = cpu_info.get('Stepping', 'Unknown')
             revision = cpu_info.get('Revision', 'Unknown')
-            info_text += f"CPU:\n"
-            info_text += f"  名称: {cpu_name}\n"
-            info_text += f"  コア数: {cpu_info.get('NumberOfCores', 'Unknown')}\n"
-            info_text += f"  スレッド数: {cpu_info.get(
-                'NumberOfLogicalProcessors', 'Unknown')}\n"
-            info_text += f"  最大クロック速度: {cpu_info.get(
-                'MaxClockSpeed', 'Unknown')} MHz\n"
-            info_text += f"  リビジョン: {revision}\n"
-            info_text += f"  ステッピング: {stepping}\n\n"
+            info_text += f"[CPU]\n"
+            info_text += f"  名称             : {cpu_name}\n"
+            info_text += f"  コア数           : {cpu_info.get('NumberOfCores', 'Unknown')}\n"
+            info_text += f"  スレッド数       : {cpu_info.get('NumberOfLogicalProcessors', 'Unknown')}\n"
+            info_text += f"  最大クロック速度 : {cpu_info.get('MaxClockSpeed', 'Unknown')} MHz\n"
+            info_text += f"  リビジョン       : {revision}\n"
+            info_text += f"  ステッピング     : {stepping}\n"
+            info_text += "-" * 80 + "\n\n"
         else:
-            info_text += "CPU情報の形式が不正です。\n\n"
+            info_text += "[CPU]\n  取得に失敗しました\n"
+            info_text += "-" * 80 + "\n\n"
 
         # メモリ情報
         if isinstance(memory_modules, list) and all(isinstance(module, dict) for module in memory_modules):
             for idx, module in enumerate(memory_modules, start=1):
-                info_text += f"メモリ モジュール{idx}:\n"
-                info_text += f"  モデル番号: {module.get(
-                    'ManufacturerAndModel', 'Unknown')}\n"
-                info_text += f"  クロック速度: {module.get('Speed', 'Unknown')} \n"
-                info_text += f"  容量: {module.get('Capacity', 'Unknown')} \n\n"
+                info_text += f"[メモリ モジュール{idx}]\n"
+                info_text += f"  モデル番号       : {module.get('ManufacturerAndModel', 'Unknown')}\n"
+                info_text += f"  クロック速度     : {module.get('Speed', 'Unknown')}\n"
+                info_text += f"  容量             : {module.get('Capacity', 'Unknown')}\n"
+                info_text += "-" * 80 + "\n\n"
         else:
-            info_text += "メモリ情報の形式が不正です。\n\n"
+            info_text += "[メモリ]\n  取得に失敗しました\n"
+            info_text += "-" * 80 + "\n\n"
 
         # マザーボード情報
         if isinstance(motherboard_info, dict):
-            info_text += f"マザーボード:\n"
-            info_text += f"  モデル番号: {motherboard_info.get('Model', 'Unknown')}\n"
-            info_text += f"  BIOSバージョン: {motherboard_info.get('BIOSVersion', 'Unknown')}\n\n"
+            info_text += f"[マザーボード]\n"
+            info_text += f"  モデル番号       : {motherboard_info.get('Model', 'Unknown')}\n"
+            info_text += f"  BIOSバージョン   : {motherboard_info.get('BIOSVersion', 'Unknown')}\n"
+            info_text += "-" * 80 + "\n\n"
         else:
-            info_text += f"マザーボード:\n  モデル番号: {motherboard_info if motherboard_info else 'Unknown'}\n\n"
+            info_text += f"[マザーボード]\n"
+            info_text += f"  モデル番号       : {motherboard_info if motherboard_info else 'Unknown'}\n"
+            info_text += "-" * 80 + "\n\n"
 
         # GPU情報
         if isinstance(gpu_info, list) and all(isinstance(gpu, dict) for gpu in gpu_info):
             for idx, gpu in enumerate(gpu_info, start=1):
-                info_text += f"GPU{idx}:\n"
-                info_text += f"  モデル番号: {gpu.get('ModelNumber', 'Unknown')}\n"
-                info_text += f"  メモリ容量: {gpu.get('AdapterRAMGB',
-                                                 'Unknown')} \n"
-                info_text += f"  ドライバーバージョン: {
-                    gpu.get('DriverVersion', 'Unknown')}\n\n"
+                info_text += f"[GPU{idx}]\n"
+                info_text += f"  モデル番号       : {gpu.get('ModelNumber', 'Unknown')}\n"
+                info_text += f"  メモリ容量       : {gpu.get('AdapterRAMGB', 'Unknown')}\n"
+                info_text += f"  ドライバーバージョン: {gpu.get('DriverVersion', 'Unknown')}\n"
+                info_text += "-" * 80 + "\n\n"
         else:
-            info_text += "GPU情報の形式が不正です。\n\n"
+            info_text += "[GPU]\n  取得に失敗しました\n"
+            info_text += "-" * 80 + "\n\n"
 
         # ストレージ情報
         if isinstance(storage_devices, list) and all(isinstance(storage, dict) for storage in storage_devices):
             for idx, storage in enumerate(storage_devices, start=1):
-                info_text += f"ストレージ ディスク{idx}:\n"
-                info_text += f"  モデル番号: {
-                    storage.get('ModelNumber', 'Unknown')}\n"
-                info_text += f"  サイズ: {storage.get('SizeGB', 'Unknown')} \n\n"
+                info_text += f"[ストレージ ディスク{idx}]\n"
+                info_text += f"  モデル番号       : {storage.get('ModelNumber', 'Unknown')}\n"
+                info_text += f"  サイズ           : {storage.get('SizeGB', 'Unknown')}\n"
+                info_text += "-" * 80 + "\n\n"
         else:
-            info_text += "ストレージ情報の形式が不正です。\n\n"
+            info_text += "[ストレージ]\n  取得に失敗しました\n"
+            info_text += "-" * 80 + "\n\n"
+
+        # フッター
+        info_text += "=" * 80 + "\n"
 
         # テキストファイルに情報を保存
         try:
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            file_name = f"PC_info_{timestamp}.txt"
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M")
+            file_name = f"PC_info_log_{timestamp}.txt"
 
             # log フォルダのパスを設定 (実行ファイルと同じディレクトリに保存)
             log_folder = os.path.join(get_executable_dir(), "log")
@@ -950,6 +967,158 @@ def display_system_info(page: ft.Page, system_info_container: ft.Column) -> None
         hide_loading_dialog(page, loading_dialog)
 
 
+####################
+#    GPU診断
+####################
+
+
+def display_gpu_log_list(
+    page: ft.Page, gpu_list_view: ft.ListView, gpu_table_container: ft.Column, selected_gpu_log: ft.Ref[str]
+) -> None:
+    """
+    保存されているGPU診断ログのリストを表示します（診断は実行しない）。
+
+    Parameters:
+        page (ft.Page): Fletのページオブジェクト。
+        gpu_list_view (ft.ListView): GPU診断ログのリストビュー。
+        gpu_table_container (ft.Column): 選択されたログの詳細を表示するコンテナ。
+        selected_gpu_log (ft.Ref[str]): 選択されたログファイル名を保持する参照。
+    """
+    # ログファイル一覧を取得して表示
+    results = gpu_diagnostics.get_gpu_diagnostic_logs()
+    gpu_list_view.controls.clear()
+    logger.debug(f"GPU Logs: {results}")
+
+    if not results:
+        gpu_list_view.controls.append(
+            ft.Text("ログファイルが存在しません。", size=12))
+    else:
+        for result in results:
+            gpu_list_view.controls.append(
+                ft.ListTile(
+                    title=ft.Text(result, size=12),
+                    on_click=lambda e, res=result: (
+                        display_gpu_log_content(
+                            page, res, gpu_table_container
+                        ),
+                        setattr(selected_gpu_log, 'current', res),
+                        page.update()
+                    ),
+                )
+            )
+    page.update()
+
+
+def display_gpu_diagnostics(
+    page: ft.Page, gpu_list_view: ft.ListView, gpu_table_container: ft.Column, selected_gpu_log: ft.Ref[str]
+) -> None:
+    """
+    GPU診断を実行し、ログを保存して、ログのリストを更新します。
+
+    Parameters:
+        page (ft.Page): Fletのページオブジェクト。
+        gpu_list_view (ft.ListView): GPU診断ログのリストビュー。
+        gpu_table_container (ft.Column): 選択されたログの詳細を表示するコンテナ。
+        selected_gpu_log (ft.Ref[str]): 選択されたログファイル名を保持する参照。
+    """
+    # ローディングインジケーターを表示
+    loading_dialog = show_loading_dialog(page)
+
+    try:
+        # GPU診断を実行してログを保存
+        gpu_status_list = gpu_diagnostics.get_gpu_device_status()
+
+        if gpu_status_list:
+            log_filepath = gpu_diagnostics.save_gpu_diagnostics_log(
+                gpu_status_list)
+            if log_filepath:
+                logger.info(f"GPU診断ログを保存しました: {log_filepath}")
+                show_success_dialog(page, "GPU診断が完了し、ログが保存されました。")
+            else:
+                show_error_dialog(page, "エラー", "GPU診断ログの保存に失敗しました。", "")
+        else:
+            show_error_dialog(page, "エラー", "GPU情報の取得に失敗しました。", "")
+
+        # ログファイル一覧を更新
+        display_gpu_log_list(page, gpu_list_view,
+                             gpu_table_container, selected_gpu_log)
+
+    except Exception as e:
+        logger.exception("GPU診断の実行中にエラーが発生しました。")
+        show_error_dialog(page, "エラー", "GPU診断の実行中にエラーが発生しました。", str(e))
+    finally:
+        # ローディングインジケーターを閉じる
+        hide_loading_dialog(page, loading_dialog)
+
+
+def display_gpu_log_content(
+    page: ft.Page, log_filename: str, gpu_table_container: ft.Column
+) -> None:
+    """
+    選択したGPU診断ログの詳細をカード形式で表示します。
+
+    Parameters:
+        page (ft.Page): Fletのページオブジェクト。
+        log_filename (str): 選択されたログファイル名。
+        gpu_table_container (ft.Column): 詳細を表示するコンテナ。
+    """
+    gpu_data = gpu_diagnostics.parse_gpu_log(log_filename)
+    logger.debug(f"GPU Log Content: {gpu_data}")
+
+    gpu_table_container.controls.clear()
+    if not gpu_data:
+        gpu_table_container.controls.append(
+            ft.Text("ログファイルの内容を読み込めませんでした。", size=12)
+        )
+    else:
+        label_width = 150  # ラベル部分の固定幅を調整
+        base_path = get_base_path()
+        icon_path = os.path.join(base_path, "icons", "video_library.png")
+
+        for idx, gpu in enumerate(gpu_data, start=1):
+            # デバイス名を取得
+            device_name = gpu.get('Name', 'Unknown')
+
+            gpu_card = ft.Container(
+                width=700,  # 横幅を統一
+                content=ft.Card(
+                    content=ft.Container(
+                        content=ft.Column(
+                            [
+                                ft.Row([
+                                    ft.Image(
+                                        src=icon_path,
+                                        width=24,
+                                        height=24,
+                                    ),
+                                    ft.Text(
+                                        f"GPU{idx}: {device_name}", size=12, weight=ft.FontWeight.BOLD)
+                                ],
+                                    vertical_alignment=ft.CrossAxisAlignment.CENTER),
+                                create_label_value_row("Status:", gpu.get(
+                                    'Status', 'Unknown'), label_width),
+                                create_label_value_row("Error Code:", gpu.get(
+                                    'Error Code', 'Unknown'), label_width),
+                                create_label_value_row("Error Description:", gpu.get(
+                                    'Error Description', 'Unknown'), label_width),
+                                create_label_value_row("Driver Version:", gpu.get(
+                                    'Driver Version', 'Unknown'), label_width),
+                                create_label_value_row("Driver Date:", gpu.get(
+                                    'Driver Date', 'Unknown'), label_width),
+                            ],
+                            spacing=5  # 行間のスペースを減少
+                        ),
+                        padding=10
+                    ),
+                    elevation=3,
+                    margin=ft.margin.symmetric(vertical=5),
+                ),
+                animate=ANIMATION_DURATION,
+            )
+            gpu_table_container.controls.append(gpu_card)
+    page.update()
+
+
 def main(page: ft.Page) -> None:
     """
     Fletアプリケーションのメイン関数。
@@ -978,6 +1147,9 @@ def main(page: ft.Page) -> None:
     # 選択されたメモリ診断ログファイル名を保持する変数
     selected_memory_log = ft.Ref[str]()
 
+    # 選択されたGPU診断ログファイル名を保持する変数
+    selected_gpu_log = ft.Ref[str]()
+
     # メモリ診断用の ListView と TableContainer
     memory_list_view = ft.ListView(expand=True)
     memory_table_container = ft.Column(
@@ -988,6 +1160,12 @@ def main(page: ft.Page) -> None:
     storage_list_view = ft.ListView(expand=True)
     storage_table_container = ft.Column(
         controls=[ft.Text("ここに選択されたログの詳細が表示されます。", size=12)]
+    )
+
+    # GPU診断用の ListView と TableContainer
+    gpu_list_view = ft.ListView(expand=True)
+    gpu_table_container = ft.Column(
+        controls=[ft.Text("ここにGPU診断ログの詳細が表示されます。", size=12)]
     )
 
     # PC情報用の Containerをft.Columnに変更
@@ -1081,6 +1259,41 @@ def main(page: ft.Page) -> None:
         scroll=ft.ScrollMode.AUTO
     )
 
+    # タブ4(GPU診断)
+    tab4_content = ft.Column(
+        [
+            ft.Container(height=5),
+            ft.Row(
+                [
+                    ft.ElevatedButton(
+                        content=ft.Text("診断結果の表示", size=12),
+                        on_click=lambda e: display_gpu_log_list(
+                            page, gpu_list_view, gpu_table_container, selected_gpu_log
+                        ),
+                    ),
+                    ft.ElevatedButton(
+                        content=ft.Text("GPU情報の取得", size=12),
+                        on_click=lambda e: display_gpu_diagnostics(
+                            page, gpu_list_view, gpu_table_container, selected_gpu_log
+                        ),
+                    ),
+                ],
+                spacing=10
+            ),
+            ft.Text("診断ログ一覧:", size=12, weight=ft.FontWeight.BOLD),
+            ft.Container(
+                content=gpu_list_view,
+                height=LIST_VIEW_HEIGHT,
+                width=CARD_WIDTH,
+                border=ft.border.all(1.5, ft.Colors.GREY),
+                padding=10,
+            ),
+            ft.Divider(height=20, thickness=2),
+            ft.Container(content=gpu_table_container, expand=True),
+        ],
+        scroll=ft.ScrollMode.AUTO
+    )
+
     # タブ構成
     tabs = ft.Tabs(
         selected_index=0,
@@ -1088,6 +1301,7 @@ def main(page: ft.Page) -> None:
             ft.Tab(text="PC情報", content=tab1_content),
             ft.Tab(text="メモリ診断", content=tab2_content),
             ft.Tab(text="ストレージ診断", content=tab3_content),
+            ft.Tab(text="GPU診断", content=tab4_content),
         ],
         expand=True,
     )

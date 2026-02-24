@@ -7,6 +7,8 @@ import wmi
 import pythoncom  # COM初期化のために追加
 import logging
 from typing import Tuple, Dict, List, Optional, Union
+import os
+import sys
 
 # ロガーの設定
 logger = logging.getLogger(__name__)
@@ -304,7 +306,7 @@ def get_motherboard_info() -> Dict[str, str]:
     # マザーボード情報の取得
     mb_command = "Get-CimInstance Win32_BaseBoard | Select-Object Manufacturer, Product, Version | ConvertTo-Json -Compress"
     motherboard_data = run_powershell_command(mb_command)
-    
+
     motherboard_model = "Unknown"
     if motherboard_data:
         if isinstance(motherboard_data, list):
@@ -313,7 +315,7 @@ def get_motherboard_info() -> Dict[str, str]:
             motherboard = motherboard_data
         else:
             motherboard = {}
-        
+
         manufacturer = motherboard.get("Manufacturer", "Unknown")
         product = motherboard.get("Product", "Unknown")
         version = motherboard.get("Version", "Unknown")
@@ -321,11 +323,11 @@ def get_motherboard_info() -> Dict[str, str]:
         logger.debug(f"取得したマザーボード情報: {motherboard_model}")
     else:
         logger.error("マザーボード情報の取得に失敗しました。")
-    
+
     # BIOS情報の取得
     bios_command = "Get-CimInstance Win32_BIOS | Select-Object SMBIOSBIOSVersion | ConvertTo-Json -Compress"
     bios_data = run_powershell_command(bios_command)
-    
+
     bios_version = "Unknown"
     if bios_data:
         if isinstance(bios_data, list):
@@ -334,12 +336,12 @@ def get_motherboard_info() -> Dict[str, str]:
             bios = bios_data
         else:
             bios = {}
-        
+
         bios_version = bios.get("SMBIOSBIOSVersion", "Unknown")
         logger.debug(f"取得したBIOSバージョン: {bios_version}")
     else:
         logger.error("BIOS情報の取得に失敗しました。")
-    
+
     return {
         "Model": motherboard_model if motherboard_model else "Unknown",
         "BIOSVersion": bios_version
@@ -359,6 +361,168 @@ class COMInitializer:
     def __exit__(self, exc_type, exc_val, exc_tb):
         pythoncom.CoUninitialize()
         logger.debug("COMを解放しました。")
+
+
+def get_pc_info_logs(log_dir: str = "log") -> List[str]:
+    """
+    PC情報ログファイルの一覧を取得します。
+
+    Args:
+        log_dir: ログファイルが保存されているディレクトリ
+
+    Returns:
+        List[str]: ログファイル名のリスト（新しい順）
+    """
+    try:
+        if getattr(sys, 'frozen', False):
+            # PyInstallerでコンパイルされた場合
+            script_dir = os.path.dirname(sys.executable)
+        else:
+            # 開発環境の場合
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+
+        log_path = os.path.join(script_dir, log_dir)
+
+        if not os.path.exists(log_path):
+            logger.warning(f"ログディレクトリが存在しません: {log_path}")
+            return []
+
+        # PC情報ログファイルのみを抽出
+        log_files = [
+            f for f in os.listdir(log_path)
+            if f.startswith("PC_info_log_") and f.endswith(".txt")
+        ]
+
+        # 更新日時の新しい順にソート
+        log_files.sort(
+            key=lambda x: os.path.getmtime(os.path.join(log_path, x)),
+            reverse=True
+        )
+
+        logger.debug(f"PC情報ログファイル一覧: {log_files}")
+        return log_files
+
+    except Exception as e:
+        logger.exception(f"PC情報ログファイル一覧の取得中にエラーが発生しました: {e}")
+        return []
+
+
+def read_pc_info_log(filename: str, log_dir: str = "log") -> str:
+    """
+    PC情報ログファイルの内容を読み込みます。
+
+    Args:
+        filename: ログファイル名
+        log_dir: ログファイルが保存されているディレクトリ
+
+    Returns:
+        str: ログファイルの内容。読み込みに失敗した場合はエラーメッセージ。
+    """
+    try:
+        if getattr(sys, 'frozen', False):
+            script_dir = os.path.dirname(sys.executable)
+        else:
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+
+        log_path = os.path.join(script_dir, log_dir, filename)
+
+        if not os.path.exists(log_path):
+            error_msg = f"ログファイルが見つかりません: {filename}"
+            logger.warning(error_msg)
+            return error_msg
+
+        with open(log_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+
+        logger.debug(f"PC情報ログを読み込みました: {filename}")
+        return content
+
+    except Exception as e:
+        error_msg = f"ログファイルの読み込み中にエラーが発生しました: {e}"
+        logger.exception(error_msg)
+        return error_msg
+
+
+def parse_pc_info_log(filename: str, log_dir: str = "log") -> Dict[str, any]:
+    """
+    PC情報ログファイルを解析して構造化データを返します。
+
+    Args:
+        filename: ログファイル名
+        log_dir: ログファイルが保存されているディレクトリ
+
+    Returns:
+        Dict[str, any]: 解析されたPC情報
+    """
+    try:
+        content = read_pc_info_log(filename, log_dir)
+        if not content or "ログファイル" in content:
+            return {}
+
+        parsed_data = {
+            'OS': {},
+            'CPU': {},
+            'Memory': [],
+            'Motherboard': {},
+            'GPU': [],
+            'Storage': []
+        }
+
+        current_section = None
+        current_item = {}
+
+        for line in content.split('\n'):
+            line = line.strip()
+
+            # セクションの開始を検出
+            if line.startswith('[') and line.endswith(']'):
+                # 前のアイテムを保存
+                if current_section and current_item:
+                    if current_section in ['Memory', 'GPU', 'Storage']:
+                        parsed_data[current_section].append(current_item)
+                    else:
+                        parsed_data[current_section] = current_item
+
+                # 新しいセクション
+                section_name = line[1:-1].strip()
+                if 'メモリ' in section_name:
+                    current_section = 'Memory'
+                elif section_name == 'GPU' or section_name.startswith('GPU'):
+                    current_section = 'GPU'
+                elif 'ストレージ' in section_name:
+                    current_section = 'Storage'
+                elif section_name == 'OS':
+                    current_section = 'OS'
+                elif section_name == 'CPU':
+                    current_section = 'CPU'
+                elif 'マザーボード' in section_name:
+                    current_section = 'Motherboard'
+                else:
+                    current_section = None
+
+                current_item = {}
+
+            # キー:値のペアを解析
+            elif ':' in line and not line.startswith('=') and not line.startswith('-'):
+                parts = line.split(':', 1)
+                if len(parts) == 2:
+                    key = parts[0].strip()
+                    value = parts[1].strip()
+                    current_item[key] = value
+
+        # 最後のアイテムを保存
+        if current_section and current_item:
+            if current_section in ['Memory', 'GPU', 'Storage']:
+                parsed_data[current_section].append(current_item)
+            else:
+                parsed_data[current_section] = current_item
+
+        logger.debug(f"PC情報ログを解析しました: {parsed_data}")
+        return parsed_data
+
+    except Exception as e:
+        logger.exception(f"PC情報ログの解析中にエラーが発生しました: {e}")
+        return {}
 
 
 if __name__ == "__main__":
