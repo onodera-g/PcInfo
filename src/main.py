@@ -9,15 +9,19 @@ import gpu_diagnostics
 from datetime import datetime
 import sys
 import subprocess
-from typing import Optional, Union, Dict, List, Sequence
+from typing import Optional, Union, Dict, List, Sequence, cast
 import ctypes
 
 import logging
 
 # 定数定義
-WINDOW_WIDTH = 800
-WINDOW_HEIGHT = 1100
-CARD_WIDTH = 700
+# ウィンドウサイズ（デフォルト値）
+WINDOW_WIDTH_DEFAULT = 800
+WINDOW_HEIGHT_DEFAULT = 1100
+WINDOW_MIN_WIDTH = 600
+WINDOW_MIN_HEIGHT = 700
+
+# その他の定数
 LIST_VIEW_HEIGHT = 150
 LABEL_WIDTH = 120
 ICON_SIZE = 24
@@ -103,8 +107,39 @@ def get_executable_dir() -> str:
     return exe_dir
 
 
-######################
-#   共通ヘルパー関数
+def get_responsive_sizes(page: ft.Page) -> Dict[str, int]:
+    """
+    ウィンドウサイズに応じたレスポンシブなサイズを計算します。
+
+    Parameters:
+        page (ft.Page): Fletのページオブジェクト。
+
+    Returns:
+        Dict[str, int]: 各UI要素のサイズを含む辞書。
+    """
+    # ウィンドウ幅を取得（デフォルト値を使用）
+    window_width = page.window.width or WINDOW_WIDTH_DEFAULT
+
+    # 基準サイズ（800px）に対する比率を計算
+    scale_ratio = window_width / WINDOW_WIDTH_DEFAULT
+
+    # 最小・最大スケールを制限（0.8〜1.5倍）
+    scale_ratio = max(0.8, min(1.5, scale_ratio))
+
+    return {
+        'font_size_small': int(10 * scale_ratio),      # 通常の小さい文字
+        'font_size_normal': int(12 * scale_ratio),     # 通常の文字
+        'font_size_large': int(14 * scale_ratio),      # 大きい文字
+        'icon_size': int(24 * scale_ratio),            # アイコンサイズ
+        'label_width': int(120 * scale_ratio),         # ラベル幅
+        'padding': int(10 * scale_ratio),              # パディング
+        'spacing': int(5 * scale_ratio),               # スペーシング
+        'list_view_height': int(150 * scale_ratio),    # リストビュー高さ
+    }
+
+
+####################
+#    共通ヘルパー関数
 ######################
 
 def create_loading_dialog(page: ft.Page) -> ft.AlertDialog:
@@ -251,13 +286,18 @@ def display_storage_diagnostics(
     """
     results = storage_diagnostics.search_storage_log()  # 診断結果を取得
     storage_list_view.controls.clear()
+    
+    # レスポンシブサイズを取得
+    sizes = get_responsive_sizes(page)
+    font_size = sizes['font_size_normal']
+    
     if not results:
-        storage_list_view.controls.append(ft.Text("ログファイルが存在しません。", size=12))
+        storage_list_view.controls.append(ft.Text("ログファイルが存在しません。", size=font_size))
     else:
         for result in results:
             storage_list_view.controls.append(
                 ft.ListTile(
-                    title=ft.Text(result, size=12),
+                    title=ft.Text(result, size=font_size),
                     on_click=lambda e, res=result: (
                         display_storage_log_content(
                             page, res, storage_table_container
@@ -286,23 +326,31 @@ def display_storage_log_content(
     disk_data = storage_diagnostics.get_storage_info(log_filename)
     logger.debug(f"Storage Log Content: {disk_data}")
 
+    # レスポンシブサイズを取得
+    sizes = get_responsive_sizes(page)
+    font_size = sizes['font_size_normal']
+    icon_size = sizes['icon_size']
+    label_width = sizes['label_width']
+    padding = sizes['padding']
+    spacing = sizes['spacing']
+
     storage_table_container.controls.clear()
     if not disk_data:
         storage_table_container.controls.append(
-            ft.Text("ログファイルの内容を読み込めませんでした。", size=12)
+            ft.Text("ログファイルの内容を読み込めませんでした。", size=font_size)
         )
     else:
-        label_width = 120  # ラベル部分の固定幅を調整
         base_path = get_base_path()
         icon_path = os.path.join(base_path, "icons", "disk.png")
 
+        # レスポンシブグリッド設定（最大4枚横並び）
+        col_config = {"xs": 12, "sm": 12, "md": 6, "lg": 4, "xl": 3, "xxl": 3}
+        
+        storage_cards = []
         for idx, disk in enumerate(disk_data, start=1):
-            # モデル番号を取得（キー名が 'Model' であることを確認）
-            # 'Model Number' など適切なキー名に変更
             model_number = disk.get('Model', 'Unknown')
 
             storage_card = ft.Container(
-                width=700,  # 横幅を統一
                 content=ft.Card(
                     content=ft.Container(
                         content=ft.Column(
@@ -310,37 +358,39 @@ def display_storage_log_content(
                                 ft.Row([
                                     ft.Image(
                                         src=icon_path,
-                                        width=24,
-                                        height=24,
+                                        width=icon_size,
+                                        height=icon_size,
                                     ),
-                                    # タイトルを「ディスク1: モデル番号」に変更
                                     ft.Text(
-                                        f"ディスク{idx}: {model_number}", size=12, weight=ft.FontWeight.BOLD)
+                                        f"ディスク{idx}: {model_number}", size=font_size, weight=ft.FontWeight.BOLD)
                                 ],
                                     vertical_alignment=ft.CrossAxisAlignment.CENTER),
                                 create_label_value_row("Disk Size:", disk.get(
-                                    'Disk Size', 'Unknown'), label_width),
+                                    'Disk Size', 'Unknown'), label_width, font_size=font_size),
                                 create_label_value_row("Interface:", disk.get(
-                                    'Interface', 'Unknown'), label_width),
+                                    'Interface', 'Unknown'), label_width, font_size=font_size),
                                 create_label_value_row("Power On Hours:", disk.get(
-                                    'Power On Hours', 'Unknown'), label_width),
+                                    'Power On Hours', 'Unknown'), label_width, font_size=font_size),
                                 create_label_value_row("Power On Count:", disk.get(
-                                    'Power On Count', 'Unknown'), label_width),
+                                    'Power On Count', 'Unknown'), label_width, font_size=font_size),
                                 create_label_value_row("Host Writes:", disk.get(
-                                    'Host Writes', 'Unknown'), label_width),
+                                    'Host Writes', 'Unknown'), label_width, font_size=font_size),
                                 create_label_value_row("Health Status:", disk.get(
-                                    'Health Status', 'Unknown'), label_width),
+                                    'Health Status', 'Unknown'), label_width, font_size=font_size),
                             ],
-                            spacing=5  # 行間のスペースを減少
+                            spacing=spacing
                         ),
-                        padding=10
+                        padding=padding
                     ),
                     elevation=3,
-                    margin=ft.margin.symmetric(vertical=5),
                 ),
-                animate=ANIMATION_DURATION,
+                margin=ft.margin.symmetric(vertical=spacing, horizontal=5),
+                col=col_config
             )
-            storage_table_container.controls.append(storage_card)
+            storage_cards.append(storage_card)
+        
+        responsive_row = ft.ResponsiveRow(storage_cards, spacing=10)
+        storage_table_container.controls.append(responsive_row)
     page.update()
 
 
@@ -404,10 +454,14 @@ def display_memory_diagnostics(
         # 成功時のダイアログ
         show_success_dialog(page, "診断結果の検索が終了しました。")
 
+        # レスポンシブサイズを取得
+        sizes = get_responsive_sizes(page)
+        font_size = sizes['font_size_normal']
+
         # リストに並べる
         if not results:
             memory_list_view.controls.append(
-                ft.Text("ログファイルが存在しません。", size=12))
+                ft.Text("ログファイルが存在しません。", size=font_size))
         else:
             # リストに並べる
             for result in results:
@@ -415,7 +469,7 @@ def display_memory_diagnostics(
                     ft.ListTile(
                         title=ft.Text(
                             f"EventID: {getattr(
-                                result, 'EventCode', 'Unknown')} - {getattr(result, 'TimeGenerated', 'Unknown')}", size=12
+                                result, 'EventCode', 'Unknown')} - {getattr(result, 'TimeGenerated', 'Unknown')}", size=font_size
                         ),
                         on_click=lambda e, res=result: (
                             display_memory_log_content(
@@ -460,11 +514,21 @@ def display_memory_log_content(
         time_generated = getattr(log, 'TimeGenerated', 'Unknown')
         message = getattr(log, 'Message', 'Unknown')
 
+    # レスポンシブサイズを取得
+    sizes = get_responsive_sizes(page)
+    font_size = sizes['font_size_normal']
+    icon_size = sizes['icon_size']
+    label_width = sizes['label_width']
+    padding = sizes['padding']
+    spacing = sizes['spacing']
+
     base_path = get_base_path()
     memory_icon_path = os.path.join(base_path, "icons", "memory.png")
 
+    # レスポンシブグリッド設定（最大4枚横並び）
+    col_config = {"xs": 12, "sm": 12, "md": 6, "lg": 4, "xl": 3, "xxl": 3}
+
     memory_card = ft.Container(
-        width=700,  # 横幅を統一
         content=ft.Card(
             content=ft.Container(
                 content=ft.Column(
@@ -472,32 +536,34 @@ def display_memory_log_content(
                         ft.Row([
                             ft.Image(
                                 src=memory_icon_path,
-                                width=ICON_SIZE,
-                                height=ICON_SIZE,
+                                width=icon_size,
+                                height=icon_size,
                             ),
-                            ft.Text("ログの詳細", size=12,
+                            ft.Text("ログの詳細", size=font_size,
                                     weight=ft.FontWeight.BOLD)
                         ],
                             vertical_alignment=ft.CrossAxisAlignment.CENTER),
                         create_label_value_row(
-                            "SourceName:", f"{source_name}"),
+                            "SourceName:", f"{source_name}", label_width=label_width, font_size=font_size),
                         create_label_value_row(
-                            "Event ID:", f"{event_code}"),
+                            "Event ID:", f"{event_code}", label_width=label_width, font_size=font_size),
                         create_label_value_row("Time Generated:", f"{
-                                               time_generated}"),
+                                               time_generated}", label_width=label_width, font_size=font_size),
                         create_label_value_row(
-                            "Message:", f"{message}"),
+                            "Message:", f"{message}", label_width=label_width, font_size=font_size),
                     ],
-                    spacing=5  # 行間のスペースを減少
+                    spacing=spacing
                 ),
-                padding=10
+                padding=padding
             ),
             elevation=3,
-            margin=ft.margin.symmetric(vertical=5),
         ),
-        animate=ANIMATION_DURATION,
+        margin=ft.margin.symmetric(vertical=spacing, horizontal=5),
+        col=col_config
     )
-    memory_table_container.controls.append(memory_card)
+    
+    responsive_row = ft.ResponsiveRow([memory_card], spacing=10)
+    memory_table_container.controls.append(responsive_row)
     page.update()
 
 
@@ -508,7 +574,7 @@ def display_memory_log_content(
 ####################
 
 
-def create_label_value_row(label: str, value: str, label_width: float = LABEL_WIDTH, value_width: Optional[float] = None) -> ft.Row:
+def create_label_value_row(label: str, value: str, label_width: float = LABEL_WIDTH, value_width: Optional[float] = None, font_size: int = 12) -> ft.Row:
     """
     ラベルと値を含むRowを作成するヘルパー関数。
 
@@ -517,20 +583,25 @@ def create_label_value_row(label: str, value: str, label_width: float = LABEL_WI
         value (str): 値テキスト。
         label_width (float): ラベル部分の固定幅。
         value_width (Optional[float]): 値部分の固定幅。デフォルトはNone。
+        font_size (int): フォントサイズ。
 
     Returns:
         ft.Row: ラベルと値を含むRowオブジェクト。
     """
     return ft.Row([
-        ft.Text(label, size=12, width=label_width, weight=ft.FontWeight.BOLD),
-        ft.Text(value, size=12, width=value_width if value_width else None)
+        ft.Text(label, size=font_size, width=label_width,
+                weight=ft.FontWeight.BOLD),
+        ft.Text(value, size=font_size,
+                width=value_width if value_width else None, expand=True)
     ],
         vertical_alignment=ft.CrossAxisAlignment.START
     )
 
 
 def create_card(
-    title: str, content_controls: Sequence[ft.Control], icon_filename: str, width: float = CARD_WIDTH, layout: str = "single_column"
+    title: str, content_controls: Sequence[ft.Control], icon_filename: str, layout: str = "single_column",
+    icon_size: int = ICON_SIZE, font_size: int = 12, padding: int = 10, spacing: int = 5,
+    col: Optional[Dict[str, int]] = None
 ) -> ft.Container:
     """
     汎用的なカードを作成するヘルパー関数。
@@ -539,11 +610,15 @@ def create_card(
         title (str): カードのタイトル。
         content_controls (List[ft.Control]): カード内のコンテンツコントロールのリスト。
         icon_filename (str): アイコンファイル名。
-        width (float): カードの横幅。
         layout (str): レイアウトタイプ（"single_column", "numbered"）。
+        icon_size (int): アイコンサイズ。
+        font_size (int): フォントサイズ。
+        padding (int): パディング。
+        spacing (int): スペーシング。
+        col (Optional[Dict[str, int]]): ResponsiveRowのcolumn設定（レスポンシブ対応用）。
 
     Returns:
-        ft.Container: 作成されたカードのコンテナ。
+        ft.Container: カードを含むコンテナ（レスポンシブ対応）。
     """
     base_path = get_base_path()
     icon_path = os.path.join(base_path, "icons", icon_filename)
@@ -558,18 +633,15 @@ def create_card(
                 flattened_controls.append(group)
         content = ft.Column(
             flattened_controls,
-            spacing=3,  # 行間のスペースを減少
-            expand=True
+            spacing=int(spacing * 0.6),  # numberedの場合は少し狭く
         )
     else:
         content = ft.Column(
             list(content_controls),
-            spacing=5,  # 行間のスペースを減少
-            expand=True
+            spacing=spacing,
         )
 
-    return ft.Container(
-        width=width,
+    card = ft.Container(
         content=ft.Card(
             content=ft.Container(
                 content=ft.Column(
@@ -577,23 +649,29 @@ def create_card(
                         ft.Row([
                             ft.Image(
                                 src=icon_path,
-                                width=ICON_SIZE,
-                                height=ICON_SIZE,
+                                width=icon_size,
+                                height=icon_size,
                             ),
-                            ft.Text(title, size=12, weight=ft.FontWeight.BOLD)
+                            ft.Text(title, size=font_size,
+                                    weight=ft.FontWeight.BOLD)
                         ],
                             vertical_alignment=ft.CrossAxisAlignment.CENTER),
                         content
                     ],
-                    spacing=5
+                    spacing=spacing
                 ),
-                padding=10
+                padding=padding
             ),
             elevation=3,
-            margin=ft.margin.symmetric(vertical=5),
         ),
-        animate=ANIMATION_DURATION,
+        margin=ft.margin.symmetric(vertical=spacing, horizontal=5),
     )
+    
+    # colパラメータが指定されている場合は、ResponsiveRow用の設定を追加
+    if col:
+        card.col = col
+    
+    return card
 
 
 def display_system_info(page: ft.Page, system_info_container: ft.Column) -> None:
@@ -628,19 +706,40 @@ def display_system_info(page: ft.Page, system_info_container: ft.Column) -> None
         # システム情報コンテナをクリア
         system_info_container.controls.clear()
 
+        # レスポンシブサイズを取得
+        sizes = get_responsive_sizes(page)
+        font_size = sizes['font_size_normal']
+        icon_size = sizes['icon_size']
+        label_width = sizes['label_width']
+        padding = sizes['padding']
+        spacing = sizes['spacing']
+
+        # レスポンシブグリッド設定
+        # 全カード共通: 最大4枚を1行に表示（xs/sm: 1列, md: 2列, lg: 3列, xl/xxl: 4列）
+        col_config = {"xs": 12, "sm": 12, "md": 6, "lg": 4, "xl": 3, "xxl": 3}
+
         # OS情報カードの作成
         os_name, os_version = os_info
         os_card = create_card(
             title="OS",
             content_controls=[
-                create_label_value_row("名称:", os_name),
-                create_label_value_row("バージョン:", os_version),
+                create_label_value_row(
+                    "名称:", os_name, label_width=label_width, font_size=font_size),
+                create_label_value_row(
+                    "バージョン:", os_version, label_width=label_width, font_size=font_size),
             ],
             icon_filename="computer.png",
-            width=700,
-            layout="single_column"
+            layout="single_column",
+            icon_size=icon_size,
+            font_size=font_size,
+            padding=padding,
+            spacing=spacing,
+            col=col_config
         )
-        system_info_container.controls.append(os_card)
+        
+        # ResponsiveRowに追加
+        responsive_row = ft.ResponsiveRow([os_card], spacing=10)
+        system_info_container.controls.append(responsive_row)
 
         # CPU情報カードの作成
         if isinstance(cpu_info, dict):
@@ -649,86 +748,103 @@ def display_system_info(page: ft.Page, system_info_container: ft.Column) -> None
             revision = cpu_info.get('Revision', 'Unknown')
 
             cpu_items_text = [
-                create_label_value_row("名称:", cpu_name),
+                create_label_value_row("名称:", cpu_name, label_width=label_width, font_size=font_size),
                 create_label_value_row(
                     "コア数:", f"{cpu_info.get('NumberOfCores', 'Unknown')}",
-                    label_width=120
+                    label_width=label_width, font_size=font_size
                 ),
                 create_label_value_row("スレッド数:", f"{cpu_info.get(
                     'NumberOfLogicalProcessors', 'Unknown')}",
-                    label_width=120
+                    label_width=label_width, font_size=font_size
                 ),
                 create_label_value_row(
                     "最大クロック速度:", f"{cpu_info.get(
                         'MaxClockSpeed', 'Unknown')} MHz",
-                    label_width=120
+                    label_width=label_width, font_size=font_size
                 ),
                 create_label_value_row(
                     "リビジョン:", f"{revision}",
-                    label_width=120
+                    label_width=label_width, font_size=font_size
                 ),
                 create_label_value_row(
                     "ステッピング:", f"{stepping}",
-                    label_width=120
+                    label_width=label_width, font_size=font_size
                 ),
             ]
             cpu_card = create_card(
                 title="CPU",
                 content_controls=cpu_items_text,
                 icon_filename="chip.png",
-                width=700,
-                layout="single_column"
+                layout="single_column",
+                icon_size=icon_size,
+                font_size=font_size,
+                padding=padding,
+                spacing=spacing,
+                col=col_config
             )
-            system_info_container.controls.append(cpu_card)
         else:
             cpu_card = create_card(
                 title="CPU",
                 content_controls=[
-                    ft.Text("CPU情報の形式が不正です。", size=12, color=ft.Colors.RED)],
+                    ft.Text("CPU情報の形式が不正です。", size=font_size, color=ft.Colors.RED)],
                 icon_filename="chip.png",
-                width=700,
-                layout="single_column"
+                layout="single_column",
+                icon_size=icon_size,
+                font_size=font_size,
+                padding=padding,
+                spacing=spacing,
+                col=col_config
             )
-            system_info_container.controls.append(cpu_card)
+        
+        responsive_row = ft.ResponsiveRow([cpu_card], spacing=10)
+        system_info_container.controls.append(responsive_row)
 
         # メモリ情報カードの作成
         if isinstance(memory_modules, list) and all(isinstance(module, dict) for module in memory_modules):
-            memory_pairs = [memory_modules[i:i + 2]
-                            for i in range(0, len(memory_modules), 2)]
-            for pair_idx, pair in enumerate(memory_pairs, start=1):
-                modules_info = []
-                for module_idx, module in enumerate(pair, start=1):
-                    module_title = f"モジュール{((pair_idx - 1) * 2) + module_idx}"
-                    module_items = [
-                        ft.Text(module_title, size=12,
-                                weight=ft.FontWeight.BOLD),
-                        create_label_value_row("モデル番号:", module.get(
-                            'ManufacturerAndModel', 'Unknown')),
-                        create_label_value_row(
-                            "クロック速度:", module.get('Speed', 'Unknown')),
-                        create_label_value_row(
-                            "容量:", module.get('Capacity', 'Unknown')),
-                    ]
-                    modules_info.append(module_items)
+            memory_cards = []
+            for idx, module in enumerate(memory_modules, start=1):
+                module_title = f"モジュール{idx}"
+                module_items = [
+                    ft.Text(module_title, size=font_size,
+                            weight=ft.FontWeight.BOLD),
+                    create_label_value_row("モデル番号:", module.get(
+                        'ManufacturerAndModel', 'Unknown'), label_width=label_width, font_size=font_size),
+                    create_label_value_row(
+                        "クロック速度:", module.get('Speed', 'Unknown'), label_width=label_width, font_size=font_size),
+                    create_label_value_row(
+                        "容量:", module.get('Capacity', 'Unknown'), label_width=label_width, font_size=font_size),
+                ]
                 memory_card = create_card(
                     title="メモリー",
-                    content_controls=modules_info,
+                    content_controls=module_items,
                     icon_filename="memory.png",
-                    width=700,
-                    layout="numbered"
+                    layout="numbered",
+                    icon_size=icon_size,
+                    font_size=font_size,
+                    padding=padding,
+                    spacing=spacing,
+                    col=col_config
                 )
-                system_info_container.controls.append(memory_card)
+                memory_cards.append(memory_card)
+            
+            responsive_row = ft.ResponsiveRow(memory_cards, spacing=10)
+            system_info_container.controls.append(responsive_row)
         else:
             memory_card = create_card(
                 title="メモリ",
                 content_controls=[
-                    ft.Text("メモリ情報の形式が不正です。", size=12, color=ft.Colors.RED)
+                    ft.Text("メモリ情報の形式が不正です。", size=font_size, color=ft.Colors.RED)
                 ],
                 icon_filename="memory.png",
-                width=700,
-                layout="single_column"
+                layout="single_column",
+                icon_size=icon_size,
+                font_size=font_size,
+                padding=padding,
+                spacing=spacing,
+                col=col_config
             )
-            system_info_container.controls.append(memory_card)
+            responsive_row = ft.ResponsiveRow([memory_card], spacing=10)
+            system_info_container.controls.append(responsive_row)
 
         # マザーボード情報カードの作成
         if isinstance(motherboard_info, dict):
@@ -736,100 +852,126 @@ def display_system_info(page: ft.Page, system_info_container: ft.Column) -> None
                 title="マザーボード",
                 content_controls=[
                     create_label_value_row(
-                        "モデル番号:", motherboard_info.get('Model', 'Unknown')),
+                        "モデル番号:", motherboard_info.get('Model', 'Unknown'), label_width=label_width, font_size=font_size),
                     create_label_value_row(
-                        "BIOSバージョン:", motherboard_info.get('BIOSVersion', 'Unknown'))
+                        "BIOSバージョン:", motherboard_info.get('BIOSVersion', 'Unknown'), label_width=label_width, font_size=font_size)
                 ],
                 icon_filename="device_hub.png",
-                width=700,
-                layout="single_column"
+                layout="single_column",
+                icon_size=icon_size,
+                font_size=font_size,
+                padding=padding,
+                spacing=spacing,
+                col=col_config
             )
         else:
             motherboard_card = create_card(
                 title="マザーボード",
                 content_controls=[
                     create_label_value_row("モデル番号:", str(
-                        motherboard_info) if motherboard_info else 'Unknown')
+                        motherboard_info) if motherboard_info else 'Unknown', label_width=label_width, font_size=font_size)
                 ],
                 icon_filename="device_hub.png",
-                width=700,
-                layout="single_column"
+                layout="single_column",
+                icon_size=icon_size,
+                font_size=font_size,
+                padding=padding,
+                spacing=spacing,
+                col=col_config
             )
-        system_info_container.controls.append(motherboard_card)
+        responsive_row = ft.ResponsiveRow([motherboard_card], spacing=10)
+        system_info_container.controls.append(responsive_row)
 
         # GPU情報カードの作成
         if isinstance(gpu_info, list) and all(isinstance(gpu, dict) for gpu in gpu_info):
-            gpu_pairs = [gpu_info[i:i + 2] for i in range(0, len(gpu_info), 2)]
-            for pair_idx, pair in enumerate(gpu_pairs, start=1):
-                modules_info = []
-                for gpu_idx, gpu in enumerate(pair, start=1):
-                    gpu_title = f"GPU{((pair_idx - 1) * 2) + gpu_idx}"
-                    module_items = [
-                        ft.Text(gpu_title, size=12, weight=ft.FontWeight.BOLD),
-                        create_label_value_row(
-                            "モデル番号:", gpu.get('ModelNumber', 'Unknown')),
-                        create_label_value_row(
-                            "メモリ容量:", gpu.get('AdapterRAMGB', 'Unknown')),
-                        create_label_value_row(
-                            "ドライバーバージョン:", gpu.get('DriverVersion', 'Unknown')),
-                    ]
-                    modules_info.append(module_items)
+            gpu_cards = []
+            for idx, gpu in enumerate(gpu_info, start=1):
+                gpu_title = f"GPU{idx}"
+                module_items = [
+                    ft.Text(gpu_title, size=font_size, weight=ft.FontWeight.BOLD),
+                    create_label_value_row(
+                        "モデル番号:", gpu.get('ModelNumber', 'Unknown'), label_width=label_width, font_size=font_size),
+                    create_label_value_row(
+                        "メモリ容量:", gpu.get('AdapterRAMGB', 'Unknown'), label_width=label_width, font_size=font_size),
+                    create_label_value_row(
+                        "ドライバーバージョン:", gpu.get('DriverVersion', 'Unknown'), label_width=label_width, font_size=font_size),
+                ]
                 gpu_card = create_card(
                     title="GPU",
-                    content_controls=modules_info,
+                    content_controls=module_items,
                     icon_filename="video_library.png",
-                    width=700,
-                    layout="numbered"
+                    layout="numbered",
+                    icon_size=icon_size,
+                    font_size=font_size,
+                    padding=padding,
+                    spacing=spacing,
+                    col=col_config
                 )
-                system_info_container.controls.append(gpu_card)
+                gpu_cards.append(gpu_card)
+            
+            responsive_row = ft.ResponsiveRow(gpu_cards, spacing=10)
+            system_info_container.controls.append(responsive_row)
         else:
             gpu_card = create_card(
                 title="GPU",
                 content_controls=[
-                    ft.Text("GPU情報の形式が不正です。", size=12, color=ft.Colors.RED)
+                    ft.Text("GPU情報の形式が不正です。", size=font_size, color=ft.Colors.RED)
                 ],
                 icon_filename="video_library.png",
-                width=700,
-                layout="single_column"
+                layout="single_column",
+                icon_size=icon_size,
+                font_size=font_size,
+                padding=padding,
+                spacing=spacing,
+                col=col_config
             )
-            system_info_container.controls.append(gpu_card)
+            responsive_row = ft.ResponsiveRow([gpu_card], spacing=10)
+            system_info_container.controls.append(responsive_row)
 
         # ストレージ情報カードの作成
         if isinstance(storage_devices, list) and all(isinstance(storage, dict) for storage in storage_devices):
-            storage_pairs = [storage_devices[i:i + 2]
-                             for i in range(0, len(storage_devices), 2)]
-            for pair_idx, pair in enumerate(storage_pairs, start=1):
-                modules_info = []
-                for storage_idx, storage in enumerate(pair, start=1):
-                    storage_title = f"ディスク{((pair_idx - 1) * 2) + storage_idx}"
-                    module_items = [
-                        ft.Text(storage_title, size=12,
-                                weight=ft.FontWeight.BOLD),
-                        create_label_value_row(
-                            "モデル番号:", storage.get('ModelNumber', 'Unknown')),
-                        create_label_value_row(
-                            "サイズ:", storage.get('SizeGB', 'Unknown')),
-                    ]
-                    modules_info.append(module_items)
+            storage_cards = []
+            for idx, storage in enumerate(storage_devices, start=1):
+                storage_title = f"ディスク{idx}"
+                module_items = [
+                    ft.Text(storage_title, size=font_size,
+                            weight=ft.FontWeight.BOLD),
+                    create_label_value_row(
+                        "モデル番号:", storage.get('ModelNumber', 'Unknown'), label_width=label_width, font_size=font_size),
+                    create_label_value_row(
+                        "サイズ:", storage.get('SizeGB', 'Unknown'), label_width=label_width, font_size=font_size),
+                ]
                 storage_card = create_card(
                     title="ストレージ",
-                    content_controls=modules_info,
+                    content_controls=module_items,
                     icon_filename="disk.png",
-                    width=700,
-                    layout="numbered"
+                    layout="numbered",
+                    icon_size=icon_size,
+                    font_size=font_size,
+                    padding=padding,
+                    spacing=spacing,
+                    col=col_config
                 )
-                system_info_container.controls.append(storage_card)
+                storage_cards.append(storage_card)
+            
+            responsive_row = ft.ResponsiveRow(storage_cards, spacing=10)
+            system_info_container.controls.append(responsive_row)
         else:
             storage_card = create_card(
                 title="ストレージ",
                 content_controls=[
-                    ft.Text("ストレージ情報の形式が不正です。", size=12, color=ft.Colors.RED)
+                    ft.Text("ストレージ情報の形式が不正です。", size=font_size, color=ft.Colors.RED)
                 ],
                 icon_filename="disk.png",
-                width=700,
-                layout="single_column"
+                layout="single_column",
+                icon_size=icon_size,
+                font_size=font_size,
+                padding=padding,
+                spacing=spacing,
+                col=col_config
             )
-            system_info_container.controls.append(storage_card)
+            responsive_row = ft.ResponsiveRow([storage_card], spacing=10)
+            system_info_container.controls.append(responsive_row)
 
         # テキスト形式での情報出力
         info_text = "=" * 80 + "\n"
@@ -989,14 +1131,18 @@ def display_gpu_log_list(
     gpu_list_view.controls.clear()
     logger.debug(f"GPU Logs: {results}")
 
+    # レスポンシブサイズを取得
+    sizes = get_responsive_sizes(page)
+    font_size = sizes['font_size_normal']
+
     if not results:
         gpu_list_view.controls.append(
-            ft.Text("ログファイルが存在しません。", size=12))
+            ft.Text("ログファイルが存在しません。", size=font_size))
     else:
         for result in results:
             gpu_list_view.controls.append(
                 ft.ListTile(
-                    title=ft.Text(result, size=12),
+                    title=ft.Text(result, size=font_size),
                     on_click=lambda e, res=result: (
                         display_gpu_log_content(
                             page, res, gpu_table_container
@@ -1065,22 +1211,31 @@ def display_gpu_log_content(
     gpu_data = gpu_diagnostics.parse_gpu_log(log_filename)
     logger.debug(f"GPU Log Content: {gpu_data}")
 
+    # レスポンシブサイズを取得
+    sizes = get_responsive_sizes(page)
+    font_size = sizes['font_size_normal']
+    icon_size = sizes['icon_size']
+    label_width = sizes['label_width']
+    padding = sizes['padding']
+    spacing = sizes['spacing']
+
     gpu_table_container.controls.clear()
     if not gpu_data:
         gpu_table_container.controls.append(
-            ft.Text("ログファイルの内容を読み込めませんでした。", size=12)
+            ft.Text("ログファイルの内容を読み込めませんでした。", size=font_size)
         )
     else:
-        label_width = 150  # ラベル部分の固定幅を調整
         base_path = get_base_path()
         icon_path = os.path.join(base_path, "icons", "video_library.png")
 
+        # レスポンシブグリッド設定（最大4枚横並び）
+        col_config = {"xs": 12, "sm": 12, "md": 6, "lg": 4, "xl": 3, "xxl": 3}
+        
+        gpu_cards = []
         for idx, gpu in enumerate(gpu_data, start=1):
-            # デバイス名を取得
             device_name = gpu.get('Name', 'Unknown')
 
             gpu_card = ft.Container(
-                width=700,  # 横幅を統一
                 content=ft.Card(
                     content=ft.Container(
                         content=ft.Column(
@@ -1088,34 +1243,37 @@ def display_gpu_log_content(
                                 ft.Row([
                                     ft.Image(
                                         src=icon_path,
-                                        width=24,
-                                        height=24,
+                                        width=icon_size,
+                                        height=icon_size,
                                     ),
                                     ft.Text(
-                                        f"GPU{idx}: {device_name}", size=12, weight=ft.FontWeight.BOLD)
+                                        f"GPU{idx}: {device_name}", size=font_size, weight=ft.FontWeight.BOLD)
                                 ],
                                     vertical_alignment=ft.CrossAxisAlignment.CENTER),
                                 create_label_value_row("Status:", gpu.get(
-                                    'Status', 'Unknown'), label_width),
+                                    'Status', 'Unknown'), label_width, font_size=font_size),
                                 create_label_value_row("Error Code:", gpu.get(
-                                    'Error Code', 'Unknown'), label_width),
+                                    'Error Code', 'Unknown'), label_width, font_size=font_size),
                                 create_label_value_row("Error Description:", gpu.get(
-                                    'Error Description', 'Unknown'), label_width),
+                                    'Error Description', 'Unknown'), label_width, font_size=font_size),
                                 create_label_value_row("Driver Version:", gpu.get(
-                                    'Driver Version', 'Unknown'), label_width),
+                                    'Driver Version', 'Unknown'), label_width, font_size=font_size),
                                 create_label_value_row("Driver Date:", gpu.get(
-                                    'Driver Date', 'Unknown'), label_width),
+                                    'Driver Date', 'Unknown'), label_width, font_size=font_size),
                             ],
-                            spacing=5  # 行間のスペースを減少
+                            spacing=spacing
                         ),
-                        padding=10
+                        padding=padding
                     ),
                     elevation=3,
-                    margin=ft.margin.symmetric(vertical=5),
                 ),
-                animate=ANIMATION_DURATION,
+                margin=ft.margin.symmetric(vertical=spacing, horizontal=5),
+                col=col_config
             )
-            gpu_table_container.controls.append(gpu_card)
+            gpu_cards.append(gpu_card)
+        
+        responsive_row = ft.ResponsiveRow(gpu_cards, spacing=10)
+        gpu_table_container.controls.append(responsive_row)
     page.update()
 
 
@@ -1138,8 +1296,11 @@ def main(page: ft.Page) -> None:
     # ページの設定
     page.title = f"PcInfo{admin_text}"
     page.padding = 20
-    page.window.width = WINDOW_WIDTH
-    page.window.height = WINDOW_HEIGHT
+    page.window.width = WINDOW_WIDTH_DEFAULT
+    page.window.height = WINDOW_HEIGHT_DEFAULT
+    page.window.min_width = WINDOW_MIN_WIDTH
+    page.window.min_height = WINDOW_MIN_HEIGHT
+    page.window.resizable = True  # ウィンドウのリサイズを有効化
 
     # 選択されたストレージ診断ログファイル名を保持する変数
     selected_storage_log = ft.Ref[str]()
@@ -1153,24 +1314,28 @@ def main(page: ft.Page) -> None:
     # メモリ診断用の ListView と TableContainer
     memory_list_view = ft.ListView(expand=True)
     memory_table_container = ft.Column(
-        controls=[ft.Text("ここにメモリ診断ログの詳細が表示されます。", size=12)]
+        controls=[ft.Text("ここにメモリ診断ログの詳細が表示されます。", size=12)],
+        expand=True,
     )
 
     # ストレージ診断用の ListView と TableContainer
     storage_list_view = ft.ListView(expand=True)
     storage_table_container = ft.Column(
-        controls=[ft.Text("ここに選択されたログの詳細が表示されます。", size=12)]
+        controls=[ft.Text("ここに選択されたログの詳細が表示されます。", size=12)],
+        expand=True,
     )
 
     # GPU診断用の ListView と TableContainer
     gpu_list_view = ft.ListView(expand=True)
     gpu_table_container = ft.Column(
-        controls=[ft.Text("ここにGPU診断ログの詳細が表示されます。", size=12)]
+        controls=[ft.Text("ここにGPU診断ログの詳細が表示されます。", size=12)],
+        expand=True,
     )
 
     # PC情報用の Containerをft.Columnに変更
     system_info_container = ft.Column(
-        controls=[]
+        controls=[],
+        expand=True,
     )
 
     # タブ1の内容（PC情報）
@@ -1215,7 +1380,7 @@ def main(page: ft.Page) -> None:
             ft.Container(
                 content=memory_list_view,
                 height=LIST_VIEW_HEIGHT,
-                width=CARD_WIDTH,
+                expand=True,  # 幅を親コンテナに合わせる
                 border=ft.border.all(1.5, ft.Colors.GREY),
                 padding=10,
             ),
@@ -1249,7 +1414,7 @@ def main(page: ft.Page) -> None:
             ft.Container(
                 content=storage_list_view,
                 height=LIST_VIEW_HEIGHT,
-                width=CARD_WIDTH,
+                expand=True,  # 幅を親コンテナに合わせる
                 border=ft.border.all(1.5, ft.Colors.GREY),
                 padding=10,
             ),
@@ -1284,7 +1449,7 @@ def main(page: ft.Page) -> None:
             ft.Container(
                 content=gpu_list_view,
                 height=LIST_VIEW_HEIGHT,
-                width=CARD_WIDTH,
+                expand=True,  # 幅を親コンテナに合わせる
                 border=ft.border.all(1.5, ft.Colors.GREY),
                 padding=10,
             ),
