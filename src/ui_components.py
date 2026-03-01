@@ -10,10 +10,10 @@ from config import BUTTON_FONT_SIZE, LIST_VIEW_HEIGHT
 
 
 def create_label_value_row(
-    label: str, 
-    value: str, 
-    label_width: float, 
-    font_size: int, 
+    label: str,
+    value: str,
+    label_width: float,
+    font_size: int,
     value_width: Optional[float] = None
 ) -> ft.Row:
     """
@@ -40,12 +40,12 @@ def create_label_value_row(
 
 
 def create_card(
-    title: str, 
-    content_controls: Sequence[ft.Control], 
-    icon_filename: str, 
-    icon_size: int, 
-    font_size: int, 
-    padding: int, 
+    title: str,
+    content_controls: Sequence[ft.Control],
+    icon_filename: str,
+    icon_size: int,
+    font_size: int,
+    padding: int,
     spacing: int,
     col: Optional[Any],
     layout: str = "single_column"
@@ -128,12 +128,12 @@ def create_diagnostic_tab_content(
 ) -> ft.Column:
     """
     診断タブの共通レイアウトを作成する関数。
-    
+
     Parameters:
         buttons (List[ft.ElevatedButton]): タブ上部に配置するボタンのリスト。
         list_view (ft.ListView): 診断ログ一覧を表示するListView。
         table_container (ft.Column): 選択されたログの詳細を表示するコンテナ。
-    
+
     Returns:
         ft.Column: タブコンテンツのColumn。
     """
@@ -141,7 +141,8 @@ def create_diagnostic_tab_content(
         [
             ft.Container(height=5),
             ft.Row(buttons, spacing=10),
-            ft.Text("診断ログ一覧:", size=BUTTON_FONT_SIZE, weight=ft.FontWeight.BOLD),
+            ft.Text("診断ログ一覧:", size=BUTTON_FONT_SIZE,
+                    weight=ft.FontWeight.BOLD),
             ft.Container(
                 content=list_view,
                 height=LIST_VIEW_HEIGHT,

@@ -16,7 +16,7 @@ from ui_components import create_diagnostic_tab_content
 # タブモジュールからインポート
 from tabs.system_info_tab import display_system_info
 from tabs.storage_tab import (
-    display_storage_diagnostics, 
+    display_storage_diagnostics,
     display_storage_diagnostics_with_dialog
 )
 from tabs.memory_tab import display_memory_diagnostics
@@ -27,7 +27,8 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 handler = logging.StreamHandler()
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+formatter = logging.Formatter(
+    '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 
@@ -95,7 +96,8 @@ def main(page: ft.Page) -> None:
             ft.Container(height=5),
             ft.ElevatedButton(
                 content=ft.Text("PC構成の取得", size=BUTTON_FONT_SIZE),
-                on_click=lambda e: display_system_info(page, system_info_container),
+                on_click=lambda e: display_system_info(
+                    page, system_info_container),
             ),
             ft.Divider(height=20, thickness=2),
             ft.Container(

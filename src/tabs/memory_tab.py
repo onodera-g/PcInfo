@@ -97,15 +97,20 @@ def display_memory_log_content(
         message = getattr(log, 'Message', 'Unknown')
 
     # レスポンシブサイズを取得
-    font_size, icon_size, label_width, padding, spacing, col_config = utils.get_ui_sizes(page)
+    font_size, icon_size, label_width, padding, spacing, col_config = utils.get_ui_sizes(
+        page)
 
     memory_card = create_card(
         title="ログの詳細",
         content_controls=[
-            create_label_value_row("SourceName:", f"{source_name}", label_width, font_size),
-            create_label_value_row("Event ID:", f"{event_code}", label_width, font_size),
-            create_label_value_row("Time Generated:", f"{time_generated}", label_width, font_size),
-            create_label_value_row("Message:", f"{message}", label_width, font_size),
+            create_label_value_row(
+                "SourceName:", f"{source_name}", label_width, font_size),
+            create_label_value_row(
+                "Event ID:", f"{event_code}", label_width, font_size),
+            create_label_value_row(
+                "Time Generated:", f"{time_generated}", label_width, font_size),
+            create_label_value_row(
+                "Message:", f"{message}", label_width, font_size),
         ],
         icon_filename="memory.png",
         icon_size=icon_size,

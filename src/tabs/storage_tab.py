@@ -70,7 +70,8 @@ def display_storage_log_content(
     logger.debug(f"Storage Log Content: {disk_data}")
 
     # レスポンシブサイズを取得
-    font_size, icon_size, label_width, padding, spacing, col_config = utils.get_ui_sizes(page)
+    font_size, icon_size, label_width, padding, spacing, col_config = utils.get_ui_sizes(
+        page)
 
     storage_table_container.controls.clear()
     if not disk_data:

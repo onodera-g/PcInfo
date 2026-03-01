@@ -7,9 +7,7 @@ from datetime import datetime
 from typing import Optional
 import system_info
 from config import DIALOG_FONT_SIZE
-from utils import get_executable_dir
-
-# get_ui_sizesは現状main.pyから渡される想定
+from utils import get_executable_dir, get_ui_sizes
 from ui_components import create_card, create_label_value_row
 from dialogs import show_loading_dialog, hide_loading_dialog, close_dialog
 
@@ -49,7 +47,8 @@ def display_system_info(page: ft.Page, system_info_container: ft.Column) -> None
         system_info_container.controls.clear()
 
         # レスポンシブサイズを取得
-        font_size, icon_size, label_width, padding, spacing, col_config = get_ui_sizes(page)
+        font_size, icon_size, label_width, padding, spacing, col_config = get_ui_sizes(
+            page)
 
         # OS情報カードの作成
         os_name, os_version = os_info
@@ -57,7 +56,8 @@ def display_system_info(page: ft.Page, system_info_container: ft.Column) -> None
             title="OS",
             content_controls=[
                 create_label_value_row("名称:", os_name, label_width, font_size),
-                create_label_value_row("バージョン:", os_version, label_width, font_size),
+                create_label_value_row(
+                    "バージョン:", os_version, label_width, font_size),
             ],
             icon_filename="computer.png",
             icon_size=icon_size,
@@ -78,12 +78,18 @@ def display_system_info(page: ft.Page, system_info_container: ft.Column) -> None
             revision = cpu_info.get('Revision', 'Unknown')
 
             cpu_items_text = [
-                create_label_value_row("名称:", cpu_name, label_width=label_width, font_size=font_size),
-                create_label_value_row("コア数:", f"{cpu_info.get('NumberOfCores', 'Unknown')}", label_width=label_width, font_size=font_size),
-                create_label_value_row("スレッド数:", f"{cpu_info.get('NumberOfLogicalProcessors', 'Unknown')}", label_width=label_width, font_size=font_size),
-                create_label_value_row("最大クロック速度:", f"{cpu_info.get('MaxClockSpeed', 'Unknown')} MHz", label_width=label_width, font_size=font_size),
-                create_label_value_row("リビジョン:", f"{revision}", label_width=label_width, font_size=font_size),
-                create_label_value_row("ステッピング:", f"{stepping}", label_width=label_width, font_size=font_size),
+                create_label_value_row(
+                    "名称:", cpu_name, label_width=label_width, font_size=font_size),
+                create_label_value_row(
+                    "コア数:", f"{cpu_info.get('NumberOfCores', 'Unknown')}", label_width=label_width, font_size=font_size),
+                create_label_value_row(
+                    "スレッド数:", f"{cpu_info.get('NumberOfLogicalProcessors', 'Unknown')}", label_width=label_width, font_size=font_size),
+                create_label_value_row(
+                    "最大クロック速度:", f"{cpu_info.get('MaxClockSpeed', 'Unknown')} MHz", label_width=label_width, font_size=font_size),
+                create_label_value_row(
+                    "リビジョン:", f"{revision}", label_width=label_width, font_size=font_size),
+                create_label_value_row(
+                    "ステッピング:", f"{stepping}", label_width=label_width, font_size=font_size),
             ]
             cpu_card = create_card(
                 title="CPU",
@@ -99,7 +105,8 @@ def display_system_info(page: ft.Page, system_info_container: ft.Column) -> None
         else:
             cpu_card = create_card(
                 title="CPU",
-                content_controls=[ft.Text("CPU情報の形式が不正です。", size=font_size, color=ft.Colors.RED)],
+                content_controls=[
+                    ft.Text("CPU情報の形式が不正です。", size=font_size, color=ft.Colors.RED)],
                 icon_filename="chip.png",
                 layout="single_column",
                 icon_size=icon_size,
@@ -118,10 +125,14 @@ def display_system_info(page: ft.Page, system_info_container: ft.Column) -> None
             for idx, module in enumerate(memory_modules, start=1):
                 module_title = f"モジュール{idx}"
                 module_items = [
-                    ft.Text(module_title, size=font_size, weight=ft.FontWeight.BOLD),
-                    create_label_value_row("モデル番号:", module.get('ManufacturerAndModel', 'Unknown'), label_width=label_width, font_size=font_size),
-                    create_label_value_row("クロック速度:", module.get('Speed', 'Unknown'), label_width=label_width, font_size=font_size),
-                    create_label_value_row("容量:", module.get('Capacity', 'Unknown'), label_width=label_width, font_size=font_size),
+                    ft.Text(module_title, size=font_size,
+                            weight=ft.FontWeight.BOLD),
+                    create_label_value_row("モデル番号:", module.get(
+                        'ManufacturerAndModel', 'Unknown'), label_width=label_width, font_size=font_size),
+                    create_label_value_row("クロック速度:", module.get(
+                        'Speed', 'Unknown'), label_width=label_width, font_size=font_size),
+                    create_label_value_row("容量:", module.get(
+                        'Capacity', 'Unknown'), label_width=label_width, font_size=font_size),
                 ]
                 memory_card = create_card(
                     title="メモリー",
@@ -141,7 +152,8 @@ def display_system_info(page: ft.Page, system_info_container: ft.Column) -> None
         else:
             memory_card = create_card(
                 title="メモリ",
-                content_controls=[ft.Text("メモリ情報の形式が不正です。", size=font_size, color=ft.Colors.RED)],
+                content_controls=[
+                    ft.Text("メモリ情報の形式が不正です。", size=font_size, color=ft.Colors.RED)],
                 icon_filename="memory.png",
                 layout="single_column",
                 icon_size=icon_size,
@@ -158,8 +170,10 @@ def display_system_info(page: ft.Page, system_info_container: ft.Column) -> None
             motherboard_card = create_card(
                 title="マザーボード",
                 content_controls=[
-                    create_label_value_row("モデル番号:", motherboard_info.get('Model', 'Unknown'), label_width=label_width, font_size=font_size),
-                    create_label_value_row("BIOSバージョン:", motherboard_info.get('BIOSVersion', 'Unknown'), label_width=label_width, font_size=font_size)
+                    create_label_value_row("モデル番号:", motherboard_info.get(
+                        'Model', 'Unknown'), label_width=label_width, font_size=font_size),
+                    create_label_value_row("BIOSバージョン:", motherboard_info.get(
+                        'BIOSVersion', 'Unknown'), label_width=label_width, font_size=font_size)
                 ],
                 icon_filename="device_hub.png",
                 layout="single_column",
@@ -173,7 +187,8 @@ def display_system_info(page: ft.Page, system_info_container: ft.Column) -> None
             motherboard_card = create_card(
                 title="マザーボード",
                 content_controls=[
-                    create_label_value_row("モデル番号:", str(motherboard_info) if motherboard_info else 'Unknown', label_width=label_width, font_size=font_size)
+                    create_label_value_row("モデル番号:", str(
+                        motherboard_info) if motherboard_info else 'Unknown', label_width=label_width, font_size=font_size)
                 ],
                 icon_filename="device_hub.png",
                 layout="single_column",
@@ -192,10 +207,14 @@ def display_system_info(page: ft.Page, system_info_container: ft.Column) -> None
             for idx, gpu in enumerate(gpu_info, start=1):
                 gpu_title = f"GPU{idx}"
                 module_items = [
-                    ft.Text(gpu_title, size=font_size, weight=ft.FontWeight.BOLD),
-                    create_label_value_row("モデル番号:", gpu.get('ModelNumber', 'Unknown'), label_width=label_width, font_size=font_size),
-                    create_label_value_row("メモリ容量:", gpu.get('AdapterRAMGB', 'Unknown'), label_width=label_width, font_size=font_size),
-                    create_label_value_row("ドライバーバージョン:", gpu.get('DriverVersion', 'Unknown'), label_width=label_width, font_size=font_size),
+                    ft.Text(gpu_title, size=font_size,
+                            weight=ft.FontWeight.BOLD),
+                    create_label_value_row("モデル番号:", gpu.get(
+                        'ModelNumber', 'Unknown'), label_width=label_width, font_size=font_size),
+                    create_label_value_row("メモリ容量:", gpu.get(
+                        'AdapterRAMGB', 'Unknown'), label_width=label_width, font_size=font_size),
+                    create_label_value_row("ドライバーバージョン:", gpu.get(
+                        'DriverVersion', 'Unknown'), label_width=label_width, font_size=font_size),
                 ]
                 gpu_card = create_card(
                     title="GPU",
@@ -215,7 +234,8 @@ def display_system_info(page: ft.Page, system_info_container: ft.Column) -> None
         else:
             gpu_card = create_card(
                 title="GPU",
-                content_controls=[ft.Text("GPU情報の形式が不正です。", size=font_size, color=ft.Colors.RED)],
+                content_controls=[
+                    ft.Text("GPU情報の形式が不正です。", size=font_size, color=ft.Colors.RED)],
                 icon_filename="video_library.png",
                 layout="single_column",
                 icon_size=icon_size,
@@ -233,9 +253,12 @@ def display_system_info(page: ft.Page, system_info_container: ft.Column) -> None
             for idx, storage in enumerate(storage_devices, start=1):
                 storage_title = f"ディスク{idx}"
                 module_items = [
-                    ft.Text(storage_title, size=font_size, weight=ft.FontWeight.BOLD),
-                    create_label_value_row("モデル番号:", storage.get('ModelNumber', 'Unknown'), label_width=label_width, font_size=font_size),
-                    create_label_value_row("サイズ:", storage.get('SizeGB', 'Unknown'), label_width=label_width, font_size=font_size),
+                    ft.Text(storage_title, size=font_size,
+                            weight=ft.FontWeight.BOLD),
+                    create_label_value_row("モデル番号:", storage.get(
+                        'ModelNumber', 'Unknown'), label_width=label_width, font_size=font_size),
+                    create_label_value_row("サイズ:", storage.get(
+                        'SizeGB', 'Unknown'), label_width=label_width, font_size=font_size),
                 ]
                 storage_card = create_card(
                     title="ストレージ",
@@ -255,7 +278,8 @@ def display_system_info(page: ft.Page, system_info_container: ft.Column) -> None
         else:
             storage_card = create_card(
                 title="ストレージ",
-                content_controls=[ft.Text("ストレージ情報の形式が不正です。", size=font_size, color=ft.Colors.RED)],
+                content_controls=[
+                    ft.Text("ストレージ情報の形式が不正です。", size=font_size, color=ft.Colors.RED)],
                 icon_filename="disk.png",
                 layout="single_column",
                 icon_size=icon_size,
@@ -363,10 +387,13 @@ def display_system_info(page: ft.Page, system_info_container: ft.Column) -> None
             error_dialog = ft.AlertDialog(
                 title=ft.Text("エラー", size=DIALOG_FONT_SIZE),
                 content=ft.Column([
-                    ft.Text("PC情報のテキストファイルへの保存中にエラーが発生しました。", size=DIALOG_FONT_SIZE),
-                    ft.Text(str(file_error), color=ft.Colors.RED, size=DIALOG_FONT_SIZE),
+                    ft.Text("PC情報のテキストファイルへの保存中にエラーが発生しました。",
+                            size=DIALOG_FONT_SIZE),
+                    ft.Text(str(file_error), color=ft.Colors.RED,
+                            size=DIALOG_FONT_SIZE),
                 ]),
-                actions=[ft.TextButton("OK", on_click=lambda e: close_dialog(error_dialog, page))],
+                actions=[ft.TextButton(
+                    "OK", on_click=lambda e: close_dialog(error_dialog, page))],
                 on_dismiss=lambda e: close_dialog(error_dialog, page),
             )
             page.overlay.append(error_dialog)
@@ -374,8 +401,10 @@ def display_system_info(page: ft.Page, system_info_container: ft.Column) -> None
 
         # 成功時のダイアログ
         success_dialog = ft.AlertDialog(
-            content=ft.Text(f"PC情報の取得が成功しました。'{file_name}' にログを保存しました。", size=DIALOG_FONT_SIZE),
-            actions=[ft.TextButton("OK", on_click=lambda e: close_dialog(success_dialog, page))],
+            content=ft.Text(
+                f"PC情報の取得が成功しました。'{file_name}' にログを保存しました。", size=DIALOG_FONT_SIZE),
+            actions=[ft.TextButton(
+                "OK", on_click=lambda e: close_dialog(success_dialog, page))],
             on_dismiss=lambda e: close_dialog(success_dialog, page),
         )
         page.overlay.append(success_dialog)
@@ -390,7 +419,8 @@ def display_system_info(page: ft.Page, system_info_container: ft.Column) -> None
                 ft.Text("PC情報の取得中にエラーが発生しました。", size=DIALOG_FONT_SIZE),
                 ft.Text(str(e), color=ft.Colors.RED, size=DIALOG_FONT_SIZE),
             ]),
-            actions=[ft.TextButton("OK", on_click=lambda e: close_dialog(error_dialog, page))],
+            actions=[ft.TextButton(
+                "OK", on_click=lambda e: close_dialog(error_dialog, page))],
             on_dismiss=lambda e: close_dialog(error_dialog, page),
         )
         page.overlay.append(error_dialog)

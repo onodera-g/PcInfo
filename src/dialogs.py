@@ -7,8 +7,8 @@ from typing import Optional
 import flet as ft
 from utils import get_base_path
 from config import (
-    ICON_SIZE, 
-    DIALOG_FONT_SIZE, 
+    ICON_SIZE,
+    DIALOG_FONT_SIZE,
     PROGRESS_BAR_WIDTH,
     ICON_CIRCULAR_PROGRESS
 )
@@ -99,9 +99,9 @@ def show_success_dialog(page: ft.Page, message: str) -> None:
 
 
 def show_error_dialog(
-    page: ft.Page, 
-    title: str, 
-    message: str, 
+    page: ft.Page,
+    title: str,
+    message: str,
     error_detail: Optional[str] = None
 ) -> None:
     """

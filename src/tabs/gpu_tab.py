@@ -75,7 +75,8 @@ def display_gpu_diagnostics(
         gpu_status_list = gpu_diagnostics.get_gpu_device_status()
 
         if gpu_status_list:
-            log_filepath = gpu_diagnostics.save_gpu_diagnostics_log(gpu_status_list)
+            log_filepath = gpu_diagnostics.save_gpu_diagnostics_log(
+                gpu_status_list)
             if log_filepath:
                 logger.info(f"GPU診断ログを保存しました: {log_filepath}")
                 show_success_dialog(page, "GPU診断が完了し、ログが保存されました。")
@@ -85,7 +86,8 @@ def display_gpu_diagnostics(
             show_error_dialog(page, "エラー", "GPU情報の取得に失敗しました。", "")
 
         # ログファイル一覧を更新
-        display_gpu_log_list(page, gpu_list_view, gpu_table_container, selected_gpu_log)
+        display_gpu_log_list(page, gpu_list_view,
+                             gpu_table_container, selected_gpu_log)
 
     except Exception as e:
         logger.exception("GPU診断の実行中にエラーが発生しました。")
@@ -110,7 +112,8 @@ def display_gpu_log_content(
     logger.debug(f"GPU Log Content: {gpu_data}")
 
     # レスポンシブサイズを取得
-    font_size, icon_size, label_width, padding, spacing, col_config = utils.get_ui_sizes(page)
+    font_size, icon_size, label_width, padding, spacing, col_config = utils.get_ui_sizes(
+        page)
 
     gpu_table_container.controls.clear()
     if not gpu_data:
