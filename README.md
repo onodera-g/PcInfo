@@ -1,138 +1,67 @@
 # PcInfo
 
 ## 概要
-このプロジェクトは、Flet フレームワークを使用して作成された PC 診断ツールです。
-PCのハードウェア情報を収集・診断し、グラフィカルインターフェイスで表示します。
+Flet フレームワークを使用して作成された PC 診断ツールです。
+ハードウェア構成の取得から各パーツの健康診断までをGUIで一括管理し、結果をテキストログとして出力します。
 
-### 主な機能
-<<<<<<< HEAD
--  **PC構成情報の取得** - OS、CPU、メモリ、ストレージ、GPU、マザーボード等の情報を取得
--  **メモリ診断** - Windowsメモリ診断の実行と過去の診断結果の表示
--  **ストレージ診断** - S.M.A.R.T.情報の取得（CrystalDiskInfoを使用）
-=======
--  **PC構成情報の取得** - OS、CPU、メモリ、ストレージ、GPU、マザーボード等の詳細情報を取得
--  **メモリ診断** - Windowsメモリ診断の実行と過去の診断結果の表示
--  **ストレージ診断** - S.M.A.R.T.情報の取得とストレージの健全性確認（CrystalDiskInfoを使用）
->>>>>>> d42dabd26c97f351f2d540257c0add456a178b2d
--  **GPU診断** - グラフィックカードの情報取得とデバイスステータスの確認
--  **ログ保存** - 診断結果をテキスト形式で自動保存
+### 機能一覧
+
+| 機能 | 内容 | 
+| :--- | :--- | 
+| **PC構成情報の取得** | OS、CPU、メモリ、ストレージ、GPU、マザーボード情報 |
+| **メモリ診断** | Windowsメモリ診断の実行予約・過去ログの表示 |
+| **ストレージ診断** | S.M.A.R.T.情報の取得（CrystalDiskInfo連携） | 
+| **GPU診断** | グラフィックカードの状態確認・ドライバ情報の取得 | 
+| **ログ保存** | 全診断結果をテキスト形式（.txt）で自動保存 | 
 
 ## システム要件
 
-- **OS**: Windows 10 / 11 (64bit)
-- **権限**: ストレージS.M.A.R.T.情報取得に管理者権限が必要になります。
-<<<<<<< HEAD
-- **CrystalDiskInfo**: ストレージ診断機能には、CrystalDiskInfo通常版のZIPファイル版が必要です。
+| 項目 | 要件 |
+| :--- | :--- |
+| **OS** | Windows 10 / 11 (64bit) |
+| **権限** | **管理者権限**（ストレージS.M.A.R.T.情報取得に必要） |
+| **外部依存** | [CrystalDiskInfo](https://crystalmark.info/ja/software/crystaldiskinfo/) 通常版 (ZIPファイル版) |
 
 ### CrystalDiskInfoの配置
+ストレージ診断機能を使用するには、以下の構成でファイルを配置してください。
 
-ストレージ診断機能を使用するには、CrystalDiskInfoが必要になります。
-
-**入手方法:**
-1. [CrystalDiskInfo公式サイト](https://crystalmark.info/ja/software/crystaldiskinfo/)からCrystalDiskInfo通常版のZIPファイル版をダウンロード
-2. ダウンロードしたZIPファイルを解凍し、フォルダを「CrystalDiskInfo」という名前に変更
-4. PcInfo.exeと同じフォルダに配置
-=======
-- **CrystalDiskInfo**: ストレージ診断機能には、CrystalDiskInfo（ポータブル版）が必要です。
-
-### CrystalDiskInfoの配置
-
-ストレージ診断機能を使用するには、CrystalDiskInfoを以下の構成で配置してください：
->>>>>>> d42dabd26c97f351f2d540257c0add456a178b2d
-
+1. [CrystalDiskInfo公式サイト](https://crystalmark.info/ja/software/crystaldiskinfo/)から **通常版のZIPファイル版** をダウンロード。
+2. 解凍したフォルダを「**CrystalDiskInfo**」という名前に変更。
+3. `PcInfo.exe` と同じフォルダに配置。
 ```
-├── PcInfo.exe                    ← 本アプリケーション
+├── PcInfo.exe                ← 本アプリケーション
 │
-└── CrystalDiskInfo/              ← このフォルダが必要
-    ├── DiskInfo64.exe
-    ├── DiskInfo32.exe
-    ├── DiskInfoA64.exe
-<<<<<<< HEAD
-    └── 
-
-
-> **注意**: 必ず**通常版のZIPファイル版**をダウンロードしてください。
-
-
-## 機能詳細
-
-=======
-    └── ...（その他のファイル）
+└── CrystalDiskInfo/          ← このフォルダが必要
+├── DiskInfo64.exe
+├── DiskInfo32.exe
+├── DiskInfoA64.exe
+└── ...
 ```
+**注意**: 必ず**通常版のZIPファイル版**を使用してください。インストーラー版では動作しません。
 
-**入手方法:**
-1. [CrystalDiskInfo公式サイト](https://crystalmark.info/ja/software/crystaldiskinfo/)からポータブル版をダウンロード
-2. ダウンロードしたZIPファイルを解凍
-3. 解凍したフォルダを「CrystalDiskInfo」という名前に変更
-4. PcInfo.exeと同じフォルダに配置
+## 各タブの機能イメージ
 
-> **注意**: インストール版ではなく、必ず**ポータブル版（ZIP版）**をダウンロードしてください。
+###  PC 情報
+<div align="left">
+  <img src="https://github.com/user-attachments/assets/2e38adf5-b01c-46af-a96f-c5b2ea5c3e4a" width="50%" alt="PcInfo スクリーンショット">
+</div>
 
+###  メモリ診断
+<div align="left">
+  <img src="a" width="50%" alt="メモリ診断">
+</div>
 
-## 機能詳細
-
->>>>>>> d42dabd26c97f351f2d540257c0add456a178b2d
-### 1. PC 情報
-PCのハードウェア構成情報を取得し、テキスト形式でログファイルとして保存します。
-
-**取得情報:**
-- **OS**: 名称、バージョン
-- **CPU**: 名称、コア数、スレッド数、最大クロック速度、リビジョン、ステッピング
-- **メモリ**: 総容量、モジュール別詳細（メーカー、型番、容量、クロック速度、メモリタイプ）
-- **ストレージ**: デバイス名、容量
-- **GPU**: デバイス名、ステータス
-- **マザーボード**: モデル番号、BIOSバージョン
-
-![PC情報タブのスクリーンショット](https://via.placeholder.com/800x600.png?text=PC%E6%83%85%E5%A0%B1%E3%82%BF%E3%83%96)
+###  ストレージ診断
+<div align="left">
+  <img src="https://github.com/user-attachments/assets/8015c5ee-9b56-4d24-bb82-7b5a2a65ada9" width="50%" alt=ストレージ診断">
+</div>
 
 
-### 2. メモリ診断
-「メモリ診断結果の表示」ボタンをクリックして、過去7日間のメモリ診断ログを取得・表示します。
-また、「Windowsメモリ診断の実行」ボタンをクリックして、Windows標準のメモリ診断ツールを起動できます（再起動が必要です）。
-
-**機能:**
-- 診断ログ一覧の表示
-- ログの詳細確認（イベントID、タイムスタンプ、メッセージ）
-- Windowsメモリ診断の実行
-
-![メモリ診断タブのスクリーンショット](https://via.placeholder.com/800x600.png?text=%E3%83%A1%E3%83%A2%E3%83%AA%E8%A8%BA%E6%96%AD%E3%82%BF%E3%83%96)
-
-
-
-### 3. ストレージ診断
-「診断結果の表示」ボタンをクリックして、保存されたストレージ診断ログを表示します。
-「S.M.A.R.T.の取得」ボタンをクリックすると、CrystalDiskInfoがバックグラウンドで実行され、最新のストレージ情報（S.M.A.R.T.データ）を取得します。
-
-**取得情報:**
-- ディスクサイズ
-- インターフェース（SATA、NVMe等）
-- 電源投入時間
-- 電源投入回数
-- 総書き込み量
-- 健全性ステータス
-
-![ストレージ診断タブのスクリーンショット](https://via.placeholder.com/800x600.png?text=%E3%82%B9%E3%83%88%E3%83%AC%E3%83%BC%E3%82%B8%E8%A8%BA%E6%96%AD%E3%82%BF%E3%83%96)
-
-
-### 4. GPU 診断
-「診断結果の表示」ボタンをクリックして、保存されたGPU診断ログを表示します。
-「GPU情報の取得」ボタンをクリックして、現在のグラフィックカードの状態、ドライババージョン、エラーコードなどを取得・表示します。
-
-**取得情報:**
-- GPU名
-- デバイスステータス
-- エラーコード
-- エラーの詳細説明
-- ドライババージョン
-- ドライバ更新日
-
-![GPU診断タブのスクリーンショット](https://via.placeholder.com/800x600.png?text=GPU%E8%A8%BA%E6%96%AD%E3%82%BF%E3%83%96)
-
+###  GPU 診断
+<div align="left">
+  <img src="https://github.com/user-attachments/assets/236a3d82-41da-4502-985f-3458d2274950" width="50%" alt="GPU診断">
+</div>
 
 ## ライセンス
 このプロジェクトは MIT ライセンスの下で提供されています。詳細については LICENSE ファイルをご覧ください。
-
 また、本ソフトウェアのS.M.A.R.T. の取得には、hiyohiyo氏が作成されたCrystalDiskInfoを使用しています。
-当該ソフトウェアはMITライセンスで提供されており、本ソフトウェアに複製する形で同梱させていただいております。この場を借りてお礼申し上げます。
-当該ソフトウェアを使用する機能について、内容や削除の要請があった場合には、直ちに対応いたします。
-
