@@ -5,9 +5,15 @@
 PCのハードウェア情報を収集・診断し、グラフィカルインターフェイスで表示します。
 
 ### 主な機能
+<<<<<<< HEAD
 -  **PC構成情報の取得** - OS、CPU、メモリ、ストレージ、GPU、マザーボード等の情報を取得
 -  **メモリ診断** - Windowsメモリ診断の実行と過去の診断結果の表示
 -  **ストレージ診断** - S.M.A.R.T.情報の取得（CrystalDiskInfoを使用）
+=======
+-  **PC構成情報の取得** - OS、CPU、メモリ、ストレージ、GPU、マザーボード等の詳細情報を取得
+-  **メモリ診断** - Windowsメモリ診断の実行と過去の診断結果の表示
+-  **ストレージ診断** - S.M.A.R.T.情報の取得とストレージの健全性確認（CrystalDiskInfoを使用）
+>>>>>>> d42dabd26c97f351f2d540257c0add456a178b2d
 -  **GPU診断** - グラフィックカードの情報取得とデバイスステータスの確認
 -  **ログ保存** - 診断結果をテキスト形式で自動保存
 
@@ -15,6 +21,7 @@ PCのハードウェア情報を収集・診断し、グラフィカルインタ
 
 - **OS**: Windows 10 / 11 (64bit)
 - **権限**: ストレージS.M.A.R.T.情報取得に管理者権限が必要になります。
+<<<<<<< HEAD
 - **CrystalDiskInfo**: ストレージ診断機能には、CrystalDiskInfo通常版のZIPファイル版が必要です。
 
 ### CrystalDiskInfoの配置
@@ -25,6 +32,13 @@ PCのハードウェア情報を収集・診断し、グラフィカルインタ
 1. [CrystalDiskInfo公式サイト](https://crystalmark.info/ja/software/crystaldiskinfo/)からCrystalDiskInfo通常版のZIPファイル版をダウンロード
 2. ダウンロードしたZIPファイルを解凍し、フォルダを「CrystalDiskInfo」という名前に変更
 4. PcInfo.exeと同じフォルダに配置
+=======
+- **CrystalDiskInfo**: ストレージ診断機能には、CrystalDiskInfo（ポータブル版）が必要です。
+
+### CrystalDiskInfoの配置
+
+ストレージ診断機能を使用するには、CrystalDiskInfoを以下の構成で配置してください：
+>>>>>>> d42dabd26c97f351f2d540257c0add456a178b2d
 
 ```
 ├── PcInfo.exe                    ← 本アプリケーション
@@ -33,6 +47,7 @@ PCのハードウェア情報を収集・診断し、グラフィカルインタ
     ├── DiskInfo64.exe
     ├── DiskInfo32.exe
     ├── DiskInfoA64.exe
+<<<<<<< HEAD
     └── 
 
 
@@ -41,6 +56,22 @@ PCのハードウェア情報を収集・診断し、グラフィカルインタ
 
 ## 機能詳細
 
+=======
+    └── ...（その他のファイル）
+```
+
+**入手方法:**
+1. [CrystalDiskInfo公式サイト](https://crystalmark.info/ja/software/crystaldiskinfo/)からポータブル版をダウンロード
+2. ダウンロードしたZIPファイルを解凍
+3. 解凍したフォルダを「CrystalDiskInfo」という名前に変更
+4. PcInfo.exeと同じフォルダに配置
+
+> **注意**: インストール版ではなく、必ず**ポータブル版（ZIP版）**をダウンロードしてください。
+
+
+## 機能詳細
+
+>>>>>>> d42dabd26c97f351f2d540257c0add456a178b2d
 ### 1. PC 情報
 PCのハードウェア構成情報を取得し、テキスト形式でログファイルとして保存します。
 
