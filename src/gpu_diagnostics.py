@@ -6,6 +6,7 @@ import logging
 from typing import List, Dict, Optional
 from datetime import datetime
 import os
+from utils import get_executable_dir
 
 # ロガーの設定
 logger = logging.getLogger(__name__)
@@ -152,7 +153,7 @@ def save_gpu_diagnostics_log(gpu_status_list: List[Dict[str, str]], log_dir: str
     """
     try:
         # ログディレクトリの作成
-        script_dir = os.path.dirname(os.path.abspath(__file__))
+        script_dir = get_executable_dir()
         log_path = os.path.join(script_dir, log_dir)
         os.makedirs(log_path, exist_ok=True)
 
@@ -208,7 +209,7 @@ def get_gpu_diagnostic_logs(log_dir: str = "log") -> List[str]:
         List[str]: ログファイル名のリスト（新しい順）
     """
     try:
-        script_dir = os.path.dirname(os.path.abspath(__file__))
+        script_dir = get_executable_dir()
         log_path = os.path.join(script_dir, log_dir)
 
         if not os.path.exists(log_path):
@@ -247,7 +248,7 @@ def read_gpu_diagnostic_log(filename: str, log_dir: str = "log") -> str:
         str: ログファイルの内容。読み込みに失敗した場合はエラーメッセージ。
     """
     try:
-        script_dir = os.path.dirname(os.path.abspath(__file__))
+        script_dir = get_executable_dir()
         log_path = os.path.join(script_dir, log_dir, filename)
 
         if not os.path.exists(log_path):

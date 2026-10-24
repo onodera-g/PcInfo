@@ -1,145 +1,73 @@
-# dialogs.py
-"""
-ダイアログ関連の関数（ローディング、成功、エラーダイアログなど）
-"""
-import os
+"""ダイアログと、画面上部へ残す処理結果の表示。"""
 from typing import Optional
 import flet as ft
-from utils import get_base_path
-from config import (
-    ICON_SIZE,
-    DIALOG_FONT_SIZE,
-    PROGRESS_BAR_WIDTH,
-    ICON_CIRCULAR_PROGRESS
-)
+from config import DIALOG_FONT_SIZE, ICON_SIZE, PROGRESS_BAR_WIDTH
+from ui_components import set_status_message
 
 
 def create_loading_dialog(page: ft.Page) -> ft.AlertDialog:
-    """
-    ローディングダイアログを作成する共通関数。
-
-    Parameters:
-        page (ft.Page): Fletのページオブジェクト。
-
-    Returns:
-        ft.AlertDialog: ローディングダイアログ。
-    """
-    base_path = get_base_path()
-    loading_icon_path = os.path.join(
-        base_path, "icons", ICON_CIRCULAR_PROGRESS)
-
-    loading_dialog = ft.AlertDialog(
+    return ft.AlertDialog(
         title=ft.Row([
-            ft.Image(
-                src=loading_icon_path,
-                width=ICON_SIZE,
-                height=ICON_SIZE,
-            ),
-            ft.Text("情報を取得中...", size=DIALOG_FONT_SIZE)
-        ],
-            vertical_alignment=ft.CrossAxisAlignment.CENTER),
-        content=ft.ProgressBar(width=PROGRESS_BAR_WIDTH),
-        actions=[],
-        actions_alignment=ft.MainAxisAlignment.START,
-        modal=True,
+            ft.ProgressRing(width=ICON_SIZE, height=ICON_SIZE, stroke_width=2),
+            ft.Text("情報を取得中...", size=DIALOG_FONT_SIZE + 2),
+        ], spacing=12, vertical_alignment=ft.CrossAxisAlignment.CENTER),
+        content=ft.ProgressBar(width=PROGRESS_BAR_WIDTH), actions=[], modal=True,
     )
-    return loading_dialog
 
 
 def show_loading_dialog(page: ft.Page) -> ft.AlertDialog:
-    """
-    ローディングダイアログを表示する。
-
-    Parameters:
-        page (ft.Page): Fletのページオブジェクト。
-
-    Returns:
-        ft.AlertDialog: 表示されたローディングダイアログ。
-    """
-    loading_dialog = create_loading_dialog(page)
-    page.overlay.append(loading_dialog)
-    loading_dialog.open = True
-    page.update()
-    return loading_dialog
+    dialog = page.session.get("pcinfo_loading")
+    if dialog is None:
+        dialog = create_loading_dialog(page)
+        page.session.set("pcinfo_loading", dialog)
+    set_status_message(page, "情報を取得しています。")
+    page.open(dialog)
+    return dialog
 
 
 def hide_loading_dialog(page: ft.Page, loading_dialog: ft.AlertDialog) -> None:
-    """
-    ローディングダイアログを非表示にする。
-
-    Parameters:
-        page (ft.Page): Fletのページオブジェクト。
-        loading_dialog (ft.AlertDialog): 非表示にするローディングダイアログ。
-    """
-    if loading_dialog in page.overlay:
-        page.overlay.remove(loading_dialog)
-    page.update()
+    if loading_dialog.open:
+        page.close(loading_dialog)
 
 
 def show_success_dialog(page: ft.Page, message: str) -> None:
-    """
-    成功ダイアログを表示する。
-
-    Parameters:
-        page (ft.Page): Fletのページオブジェクト。
-        message (str): 表示するメッセージ。
-    """
-    success_dialog = ft.AlertDialog(
+    loading = page.session.get("pcinfo_loading")
+    if loading is not None:
+        hide_loading_dialog(page, loading)
+    set_status_message(page, message)
+    dialog = ft.AlertDialog(
         content=ft.Text(message, size=DIALOG_FONT_SIZE),
-        actions=[
-            ft.TextButton(
-                "OK", on_click=lambda e: close_dialog(success_dialog, page)
-            )
-        ],
-        on_dismiss=lambda e: close_dialog(success_dialog, page),
+        actions=[ft.TextButton("OK", on_click=lambda e: close_dialog(dialog, page))],
     )
-    page.overlay.append(success_dialog)
-    success_dialog.open = True
-    page.update()
+    dialog.on_dismiss = lambda e: remove_closed_dialog(dialog, page)
+    page.open(dialog)
 
 
-def show_error_dialog(
-    page: ft.Page,
-    title: str,
-    message: str,
-    error_detail: Optional[str] = None
-) -> None:
-    """
-    エラーダイアログを表示する。
-
-    Parameters:
-        page (ft.Page): Fletのページオブジェクト。
-        title (str): ダイアログのタイトル。
-        message (str): エラーメッセージ。
-        error_detail (Optional[str]): エラーの詳細（オプション）。
-    """
-    content_controls = [ft.Text(message, size=DIALOG_FONT_SIZE)]
+def show_error_dialog(page: ft.Page, title: str, message: str,
+                      error_detail: Optional[str] = None) -> None:
+    loading = page.session.get("pcinfo_loading")
+    if loading is not None:
+        hide_loading_dialog(page, loading)
+    set_status_message(page, message, error=True)
+    controls = [ft.Text(message, size=DIALOG_FONT_SIZE)]
     if error_detail:
-        content_controls.append(
-            ft.Text(error_detail, color=ft.Colors.RED, size=DIALOG_FONT_SIZE))
-
-    error_dialog = ft.AlertDialog(
-        title=ft.Text(title, size=DIALOG_FONT_SIZE),
-        content=ft.Column(content_controls) if error_detail else ft.Text(
-            message, size=DIALOG_FONT_SIZE),
-        actions=[
-            ft.TextButton(
-                "OK", on_click=lambda e: close_dialog(error_dialog, page))
-        ],
-        on_dismiss=lambda e: close_dialog(error_dialog, page),
+        controls.append(ft.Text(error_detail, size=DIALOG_FONT_SIZE,
+                                color=ft.colors.ERROR, selectable=True))
+    dialog = ft.AlertDialog(
+        title=ft.Text(title, size=DIALOG_FONT_SIZE + 2),
+        content=ft.Column(controls, tight=True, scroll=ft.ScrollMode.AUTO),
+        actions=[ft.TextButton("OK", on_click=lambda e: close_dialog(dialog, page))],
     )
-    page.overlay.append(error_dialog)
-    error_dialog.open = True
-    page.update()
+    dialog.on_dismiss = lambda e: remove_closed_dialog(dialog, page)
+    page.open(dialog)
+
+
+def remove_closed_dialog(dialog: ft.AlertDialog, page: ft.Page) -> None:
+    dialog.open = False
+    if dialog in page.overlay:
+        page.overlay.remove(dialog)
+        page.update()
 
 
 def close_dialog(dialog: ft.AlertDialog, page: ft.Page) -> None:
-    """
-    ダイアログを閉じる。
-
-    Parameters:
-        dialog (ft.AlertDialog): 閉じるダイアログオブジェクト。
-        page (ft.Page): Fletのページオブジェクト。
-    """
-    dialog.open = False
-    page.update()
+    page.close(dialog)

@@ -9,14 +9,14 @@ import gpu_diagnostics
 from config import DIALOG_FONT_SIZE
 from utils import get_executable_dir
 import utils
-from ui_components import create_card, create_label_value_row
+from ui_components import create_card, create_label_value_row, create_log_tile, set_status_message
 from dialogs import show_loading_dialog, hide_loading_dialog, close_dialog, show_success_dialog, show_error_dialog
 
 logger = logging.getLogger(__name__)
 
 
 def display_gpu_log_list(
-    page: ft.Page, gpu_list_view: ft.ListView, gpu_table_container: ft.Column, selected_gpu_log: ft.Ref[str]
+    page: ft.Page, gpu_list_view: ft.ListView, gpu_table_container: ft.Column, selected_gpu_log: ft.Ref[str], update_status: bool = True
 ) -> None:
     """
     保存されているGPU診断ログのリストを表示します（診断は実行しない）。
@@ -41,17 +41,15 @@ def display_gpu_log_list(
     else:
         for result in results:
             gpu_list_view.controls.append(
-                ft.ListTile(
-                    title=ft.Text(result, size=font_size),
-                    on_click=lambda e, res=result: (
-                        display_gpu_log_content(
-                            page, res, gpu_table_container
-                        ),
-                        setattr(selected_gpu_log, 'current', res),
-                        page.update()
-                    ),
+                create_log_tile(
+                    page, gpu_list_view, result, result,
+                    selected_gpu_log,
+                    lambda log: display_gpu_log_content(page, log, gpu_table_container),
+                    font_size,
                 )
             )
+    if update_status:
+        set_status_message(page, f"診断ログを{len(results)}件表示しました。")
     page.update()
 
 
@@ -87,7 +85,7 @@ def display_gpu_diagnostics(
 
         # ログファイル一覧を更新
         display_gpu_log_list(page, gpu_list_view,
-                             gpu_table_container, selected_gpu_log)
+                             gpu_table_container, selected_gpu_log, update_status=False)
 
     except Exception as e:
         logger.exception("GPU診断の実行中にエラーが発生しました。")

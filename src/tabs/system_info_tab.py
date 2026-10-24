@@ -9,7 +9,7 @@ import system_info
 from config import DIALOG_FONT_SIZE
 from utils import get_executable_dir, get_ui_sizes
 from ui_components import create_card, create_label_value_row
-from dialogs import show_loading_dialog, hide_loading_dialog, close_dialog
+from dialogs import show_loading_dialog, hide_loading_dialog, show_success_dialog, show_error_dialog
 
 logger = logging.getLogger(__name__)
 
@@ -106,7 +106,7 @@ def display_system_info(page: ft.Page, system_info_container: ft.Column) -> None
             cpu_card = create_card(
                 title="CPU",
                 content_controls=[
-                    ft.Text("CPU情報の形式が不正です。", size=font_size, color=ft.Colors.RED)],
+                    ft.Text("CPU情報の形式が不正です。", size=font_size, color=ft.colors.ERROR)],
                 icon_filename="chip.png",
                 layout="single_column",
                 icon_size=icon_size,
@@ -153,7 +153,7 @@ def display_system_info(page: ft.Page, system_info_container: ft.Column) -> None
             memory_card = create_card(
                 title="メモリ",
                 content_controls=[
-                    ft.Text("メモリ情報の形式が不正です。", size=font_size, color=ft.Colors.RED)],
+                    ft.Text("メモリ情報の形式が不正です。", size=font_size, color=ft.colors.ERROR)],
                 icon_filename="memory.png",
                 layout="single_column",
                 icon_size=icon_size,
@@ -235,7 +235,7 @@ def display_system_info(page: ft.Page, system_info_container: ft.Column) -> None
             gpu_card = create_card(
                 title="GPU",
                 content_controls=[
-                    ft.Text("GPU情報の形式が不正です。", size=font_size, color=ft.Colors.RED)],
+                    ft.Text("GPU情報の形式が不正です。", size=font_size, color=ft.colors.ERROR)],
                 icon_filename="video_library.png",
                 layout="single_column",
                 icon_size=icon_size,
@@ -279,7 +279,7 @@ def display_system_info(page: ft.Page, system_info_container: ft.Column) -> None
             storage_card = create_card(
                 title="ストレージ",
                 content_controls=[
-                    ft.Text("ストレージ情報の形式が不正です。", size=font_size, color=ft.Colors.RED)],
+                    ft.Text("ストレージ情報の形式が不正です。", size=font_size, color=ft.colors.ERROR)],
                 icon_filename="disk.png",
                 layout="single_column",
                 icon_size=icon_size,
@@ -382,48 +382,17 @@ def display_system_info(page: ft.Page, system_info_container: ft.Column) -> None
                 f.write(info_text)
             logger.info(f"PC情報を '{file_path}' に保存しました。")
         except Exception as file_error:
-            logger.exception("PC情報のテキストファイルへの保存中にエラーが発生しました:")
-            # エラーダイアログを表示
-            error_dialog = ft.AlertDialog(
-                title=ft.Text("エラー", size=DIALOG_FONT_SIZE),
-                content=ft.Column([
-                    ft.Text("PC情報のテキストファイルへの保存中にエラーが発生しました。",
-                            size=DIALOG_FONT_SIZE),
-                    ft.Text(str(file_error), color=ft.Colors.RED,
-                            size=DIALOG_FONT_SIZE),
-                ]),
-                actions=[ft.TextButton(
-                    "OK", on_click=lambda e: close_dialog(error_dialog, page))],
-                on_dismiss=lambda e: close_dialog(error_dialog, page),
-            )
-            page.overlay.append(error_dialog)
-            error_dialog.open = True
+            logger.exception("PC情報のテキストファイルへの保存中にエラーが発生しました。")
+            show_error_dialog(page, "保存できませんでした",
+                              "PC構成は表示できましたが、ログを保存できませんでした。保存先の空き容量と書き込み権限を確認してください。",
+                              str(file_error))
+            return
 
-        # 成功時のダイアログ
-        success_dialog = ft.AlertDialog(
-            content=ft.Text(
-                f"PC情報の取得が成功しました。'{file_name}' にログを保存しました。", size=DIALOG_FONT_SIZE),
-            actions=[ft.TextButton(
-                "OK", on_click=lambda e: close_dialog(success_dialog, page))],
-            on_dismiss=lambda e: close_dialog(success_dialog, page),
-        )
-        page.overlay.append(success_dialog)
-        success_dialog.open = True
+        show_success_dialog(page, f"PC情報を取得し、'{file_name}' にログを保存しました。")
 
     except Exception as e:
-        # エラーダイアログを表示
         logger.exception("PC情報の取得中にエラーが発生しました。")
-        error_dialog = ft.AlertDialog(
-            title=ft.Text("エラー", size=DIALOG_FONT_SIZE),
-            content=ft.Column([
-                ft.Text("PC情報の取得中にエラーが発生しました。", size=DIALOG_FONT_SIZE),
-                ft.Text(str(e), color=ft.Colors.RED, size=DIALOG_FONT_SIZE),
-            ]),
-            actions=[ft.TextButton(
-                "OK", on_click=lambda e: close_dialog(error_dialog, page))],
-            on_dismiss=lambda e: close_dialog(error_dialog, page),
-        )
-        page.overlay.append(error_dialog)
-        error_dialog.open = True
+        show_error_dialog(page, "取得できませんでした", "PC情報の取得中にエラーが発生しました。", str(e))
+
     finally:
         hide_loading_dialog(page, loading_dialog)

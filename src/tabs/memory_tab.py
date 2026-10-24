@@ -9,7 +9,7 @@ import diagnostics
 from config import DIALOG_FONT_SIZE
 from utils import get_executable_dir
 import utils
-from ui_components import create_card, create_label_value_row
+from ui_components import create_card, create_label_value_row, create_log_tile, set_status_message
 from dialogs import show_loading_dialog, hide_loading_dialog, close_dialog, show_success_dialog, show_error_dialog
 
 logger = logging.getLogger(__name__)
@@ -48,20 +48,14 @@ def display_memory_diagnostics(
         else:
             # リストに並べる
             for result in results:
+                event_code = result.get('EventCode', 'Unknown') if isinstance(result, dict) else getattr(result, 'EventCode', 'Unknown')
+                time_generated = result.get('TimeGenerated', 'Unknown') if isinstance(result, dict) else getattr(result, 'TimeGenerated', 'Unknown')
                 memory_list_view.controls.append(
-                    ft.ListTile(
-                        title=ft.Text(
-                            f"EventID: {getattr(result, 'EventCode', 'Unknown')} - {getattr(result, 'TimeGenerated', 'Unknown')}", size=font_size
-                        ),
-                        on_click=lambda e, res=result: (
-                            display_memory_log_content(
-                                page, res, memory_table_container
-                            ),
-                            setattr(selected_memory_log, 'current', res),
-                            page.update()
-                        ),
-                        selected=(selected_memory_log.current == result),
-                        selected_color=ft.Colors.BLUE,
+                    create_log_tile(
+                        page, memory_list_view, f"EventID: {event_code} - {time_generated}", result,
+                        selected_memory_log,
+                        lambda log: display_memory_log_content(page, log, memory_table_container),
+                        font_size,
                     )
                 )
     finally:

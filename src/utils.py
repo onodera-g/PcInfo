@@ -8,7 +8,6 @@ import ctypes
 import logging
 from typing import Dict, Tuple
 import flet as ft
-from config import WINDOW_WIDTH_DEFAULT
 
 # ロガーの設定
 logger = logging.getLogger(__name__)
@@ -81,24 +80,16 @@ def get_responsive_sizes(page: ft.Page) -> Dict[str, int]:
     Returns:
         Dict[str, int]: 各UI要素のサイズを含む辞書。
     """
-    # ウィンドウ幅を取得（デフォルト値を使用）
-    window_width = page.window.width or WINDOW_WIDTH_DEFAULT
-
-    # 基準サイズ（800px）に対する比率を計算
-    scale_ratio = window_width / WINDOW_WIDTH_DEFAULT
-
-    # 最小・最大スケールを制限（0.8〜1.5倍）
-    scale_ratio = max(0.8, min(1.5, scale_ratio))
-
+    # ウィンドウを狭めても本文を縮小せず、カードの列数と折り返しで調整する。
     return {
-        'font_size_small': int(10 * scale_ratio),      # 通常の小さい文字
-        'font_size_normal': int(12 * scale_ratio),     # 通常の文字
-        'font_size_large': int(14 * scale_ratio),      # 大きい文字
-        'icon_size': int(24 * scale_ratio),            # アイコンサイズ
-        'label_width': int(120 * scale_ratio),         # ラベル幅
-        'padding': int(10 * scale_ratio),              # パディング
-        'spacing': int(5 * scale_ratio),               # スペーシング
-        'list_view_height': int(150 * scale_ratio),    # リストビュー高さ
+        'font_size_small': 12,
+        'font_size_normal': 14,
+        'font_size_large': 15,
+        'icon_size': 24,
+        'label_width': 152,
+        'padding': 16,
+        'spacing': 8,
+        'list_view_height': 150,
     }
 
 
@@ -118,6 +109,6 @@ def get_ui_sizes(page: ft.Page) -> Tuple[int, int, int, int, int, Dict[str, int]
     label_width = sizes['label_width']
     padding = sizes['padding']
     spacing = sizes['spacing']
-    col_config = {"xs": 12, "sm": 12, "md": 6, "lg": 4, "xl": 3, "xxl": 3}
+    col_config = {"xs": 12, "sm": 12, "md": 12, "lg": 6, "xl": 6, "xxl": 6}
 
     return font_size, icon_size, label_width, padding, spacing, col_config

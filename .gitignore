@@ -1,43 +1,45 @@
-# Python関連
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-**/__pycache__/
-
-# 仮想環境
-venv/
-ENV/
-env/
-
-# ビルド・配布関連
-src/dist/
-src/build/
-src/*.egg-info/
-src/*.spec
-build/
-*.spec
-
-# 仮想環境
-venv/
-ENV/
-env/
-
-# ログファイル
-src/CrystalDiskInfo/
-src/log/
-src/IPDT_4.1.9.41_src/
-
-
-
-# IDE関連
-.vscode/
-.idea/
-.github/
-
-# OS関連
-.DS_Store
-Thumbs.db
-
-# 
-*.mp4
+# GitHubの既存公開ファイルだけを同期する。
+# 公開ファイルを追加する場合は、対象を確認してこの許可一覧へ追加する。
+/*
+!/.gitignore
+!/README.md
+!/requirements.txt
+!/dist/
+/dist/*
+!/dist/PcInfo.exe
+!/dist/README.txt
+!/src/
+/src/*
+!/src/config.py
+!/src/diagnostics.py
+!/src/dialogs.py
+!/src/gpu_diagnostics.py
+!/src/log_writer.py
+!/src/main.py
+!/src/powershell_utils.py
+!/src/storage_diagnostics.py
+!/src/system_info.py
+!/src/ui_components.py
+!/src/utils.py
+!/src/CrystalDiskInfo/
+/src/CrystalDiskInfo/*
+!/src/CrystalDiskInfo/dummy.txt
+!/src/icons/
+/src/icons/*
+!/src/icons/app_icon.ico
+!/src/icons/chip.png
+!/src/icons/computer.png
+!/src/icons/device_hub.png
+!/src/icons/disk.png
+!/src/icons/memory.png
+!/src/icons/video_library.png
+!/src/log/
+/src/log/*
+!/src/log/storage_health_log_20241013_040713.txt
+!/src/tabs/
+/src/tabs/*
+!/src/tabs/__init__.py
+!/src/tabs/gpu_tab.py
+!/src/tabs/memory_tab.py
+!/src/tabs/storage_tab.py
+!/src/tabs/system_info_tab.py

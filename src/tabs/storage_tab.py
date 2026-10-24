@@ -9,7 +9,7 @@ import storage_diagnostics
 from config import DIALOG_FONT_SIZE
 from utils import get_executable_dir
 import utils
-from ui_components import create_card, create_label_value_row
+from ui_components import create_card, create_label_value_row, create_log_tile, set_status_message
 from dialogs import show_loading_dialog, hide_loading_dialog, close_dialog, show_success_dialog, show_error_dialog
 
 logger = logging.getLogger(__name__)
@@ -39,19 +39,14 @@ def display_storage_diagnostics(
     else:
         for result in results:
             storage_list_view.controls.append(
-                ft.ListTile(
-                    title=ft.Text(result, size=font_size),
-                    on_click=lambda e, res=result: (
-                        display_storage_log_content(
-                            page, res, storage_table_container
-                        ),
-                        setattr(selected_storage_log, 'current', res),
-                        page.update()
-                    ),
-                    selected=(selected_storage_log.current == result),
-                    selected_color=ft.Colors.BLUE,
+                create_log_tile(
+                    page, storage_list_view, result, result,
+                    selected_storage_log,
+                    lambda log: display_storage_log_content(page, log, storage_table_container),
+                    font_size,
                 )
             )  # クリックで詳細を表示する
+    set_status_message(page, f"診断ログを{len(results)}件表示しました。")
     page.update()
 
 
